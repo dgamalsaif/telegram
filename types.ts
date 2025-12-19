@@ -52,3 +52,19 @@ export interface SearchParams {
   mode: SearchMode;
   searchType: SearchType;
 }
+
+// تعريف يدوي لـ process لتجنب أخطاء TypeScript في بيئة المتصفح
+declare global {
+  interface Window {
+    process: {
+      env: {
+        [key: string]: string | undefined;
+      };
+    };
+  }
+}
+
+// تأكيد وجود process.env في النطاق العالمي
+if (typeof (window as any).process === 'undefined') {
+  (window as any).process = { env: {} };
+}
