@@ -1,3 +1,4 @@
+
 export interface Platform {
   id: string;
   name: string;
@@ -11,6 +12,10 @@ export interface UserProfile {
   telegramHandle: string;
   operationalId: string;
   isRegistered: boolean;
+  apiId?: string;
+  apiHash?: string;
+  phoneNumber?: string;
+  syncStatus?: 'disconnected' | 'syncing' | 'authorized';
 }
 
 export interface TelegramGroup {
@@ -18,16 +23,26 @@ export interface TelegramGroup {
   title: string;
   description: string;
   url: string;
-  sourcePostUrl?: string; // رابط المنشور الأصلي الذي تم العثور فيه على الرابط
+  sourcePostUrl?: string; 
   category?: string;
   isPrivate: boolean;
   isProfessional?: boolean;
   platformSource: string;
-  linkType: 'Telegram' | 'WhatsApp';
+  linkType: 'Telegram' | 'WhatsApp' | 'Discord';
   country?: string;
   language?: string;
   timestamp: string;
   confidenceScore: number;
+  joinMethod?: 'inviteLink' | 'username' | 'idSearch' | 'mention';
+}
+
+export interface TelegramMessage {
+  id: string;
+  text: string;
+  sender: string;
+  date: string;
+  groupTitle: string;
+  url: string;
 }
 
 export interface SearchHistoryItem {
@@ -40,6 +55,7 @@ export interface SearchResult {
   text: string;
   sources: Array<{ title: string; uri: string }>;
   parsedGroups: TelegramGroup[];
+  messages?: TelegramMessage[];
   summary?: {
     totalDetected: number;
     privateRatio: string;
@@ -55,7 +71,7 @@ export interface SearchParams {
   country: string;
   language: string;
   category: string;
-  platforms: string[];
+  platforms: Platform[];
   mode: SearchMode;
   searchType: SearchType;
   agentContext?: UserProfile;
