@@ -6,6 +6,7 @@ export default defineConfig({
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
   },
   build: {
-    target: 'esnext'
+    target: 'esnext',
+    outDir: 'dist'
   }
 });
