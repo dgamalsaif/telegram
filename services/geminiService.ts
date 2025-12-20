@@ -18,104 +18,77 @@ const parseSafeJSON = (text: string): any => {
   }
 };
 
-// --- ALGORITHM V4: HYPER-SPEED VECTOR ---
+// --- ALGORITHM V9: TURBO STEALTH RECON ---
 const buildSearchVector = (params: SearchParams): string => {
-  const { query, mode, scope, platforms, location, medicalContext } = params;
+  const { query, platforms, identities } = params;
   
-  // 1. AGGRESSIVE PLATFORM SIGNATURES
-  // We use specific operators to target invite URLs directly
-  const directLinkPatterns: Record<string, string> = {
-    'Telegram': '(site:t.me OR site:telegram.me OR "t.me/+" OR "t.me/joinchat")',
-    'WhatsApp': '(site:chat.whatsapp.com OR "chat.whatsapp.com")',
-    'Discord': '(site:discord.com/invite OR site:discord.gg OR "discord.gg")',
-    'Facebook': '(site:facebook.com/groups)',
-    'LinkedIn': '(site:linkedin.com/groups)',
-    'Signal': '(site:signal.group)',
-    'Reddit': '(site:reddit.com)',
-    'X': '(site:x.com OR site:twitter.com)',
+  // 1. TURBO PATTERNS (Optimized for speed & precision)
+  const turboPatterns: Record<string, string> = {
+    'Telegram': '("t.me/+" OR "t.me/joinchat/" OR "t.me/c/")',
+    'WhatsApp': '("chat.whatsapp.com/")',
+    'Discord': '("discord.gg/" OR "discord.com/invite/")',
   };
 
-  // 2. SCOPE TARGETING (Optimized for Communities/Channels)
-  let scopeKeywords = '';
-  if (scope === 'channels') {
-     scopeKeywords = '("channel" OR "broadcast" OR "feed")';
-     if (platforms.includes('Telegram')) directLinkPatterns['Telegram'] = '(site:t.me/s/ OR "t.me") -joinchat';
-  } else if (scope === 'communities' || scope === 'events') {
-     scopeKeywords = '("group" OR "chat" OR "community" OR "discussion" OR "thread")';
-     // Force join links for communities
-     if (platforms.includes('Telegram')) directLinkPatterns['Telegram'] = '(site:t.me/joinchat OR site:t.me/+)';
-  } else {
-     scopeKeywords = '("profile" OR "bio" OR "contact")';
-  }
+  // 2. AGGRESSIVE CONTEXT ANCHORS
+  const contextTags = [
+    'invite', 'join', 'private', 'hidden', 'leaked', 'رابط', 'قروب', 'سري'
+  ];
 
-  // 3. PLATFORM SELECTION
   const activePlatforms = platforms.length > 0 ? platforms : ['Telegram', 'WhatsApp', 'Discord'];
-  const targetSites = activePlatforms
-    .map(p => directLinkPatterns[p] || `"${p}"`) 
+  const platformQuery = activePlatforms
+    .map(p => turboPatterns[p] || `"${p}"`) 
     .join(' OR ');
 
-  // 4. DISCOVERY LAYER (Finding links on 3rd party sites)
-  const discoveryKeywords = `("invite link" OR "join group" OR "group link" OR "discord invite" OR "whatsapp link")`;
+  // Inject identity context to "pivot" search results towards user-relevant circles
+  const identityContext = identities.map(id => `"${id.value}"`).join(' OR ');
 
-  // 5. SMART MEDICAL CONTEXT (Auto-Inject)
-  let coreQuery = `"${query}"`;
-  
-  const isMedicalContext = mode === 'medical-residency' || 
-                           /medical|medicine|doctor|board|residency|specialty|health|clinic|hospital|pharmacy|dentist/i.test(query);
-
-  if (isMedicalContext) {
-      const specialty = medicalContext?.specialty || query;
-      const sLower = specialty.toLowerCase();
-      let enhancedSpecialty = `"${specialty}"`;
-
-      // Fast Alias Mapping
-      if(sLower.includes('family') || sLower.includes('fam')) enhancedSpecialty = '("Family Medicine" OR "FM" OR "طب الأسرة")';
-      else if (sLower.includes('pedia')) enhancedSpecialty = '("Pediatrics" OR "Pedia" OR "طب أطفال")';
-      else if (sLower.includes('internal') || sLower === 'im') enhancedSpecialty = '("Internal Medicine" OR "IM" OR "الباطنة")';
-      else if (sLower.includes('surgery') || sLower === 'gs') enhancedSpecialty = '("General Surgery" OR "GS" OR "جراحة")';
-
-      const contextKeywords = `("Board" OR "Residency" OR "Fellowship" OR "Group" OR "بورد" OR "تجمع" OR "قروب")`;
-      
-      // If query is generic, we replace it. If specific, we append context.
-      coreQuery = query.length < 3 ? `(${enhancedSpecialty} ${contextKeywords})` : `("${query}" AND ${contextKeywords})`;
-  }
-
-  // 6. LOCATION LOCK
-  const locStr = [location?.country, location?.city].filter(Boolean).map(s => `"${s}"`).join(' AND ');
-
-  // 7. FINAL VECTOR
-  // Priority: Query AND (Direct Sites OR Discovery)
   return `
-    ${coreQuery} 
-    ${locStr} 
-    ${scopeKeywords}
-    (${targetSites} OR ${discoveryKeywords})
+    (${query}) 
+    (${platformQuery})
+    (${contextTags.join(' OR ')})
+    ${identityContext ? `AND (${identityContext})` : ''}
+    -inurl:help -inurl:support
   `.replace(/\s+/g, ' ').trim();
 };
 
-export const searchGlobalIntel = async (params: SearchParams): Promise<SearchResult> => {
+export interface EnhancedSearchResult extends SearchResult {
+  suggestion: string;
+}
+
+export const searchGlobalIntel = async (params: SearchParams): Promise<EnhancedSearchResult> => {
+  // Initialize AI for every request to ensure latest API key usage
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const searchVector = buildSearchVector(params);
   
-  // MINIMALIST INSTRUCTION FOR MAXIMUM SPEED
   const systemInstruction = `
-    ROLE: OSINT LINK EXTRACTOR.
-    TARGET: Find DIRECT INVITE LINKS (Telegram, WhatsApp, Discord) for: "${params.query}".
+    ROLE: ELITE HUMAN-AGENT OSINT ANALYST (V9 TURBO).
+    MISSION: Rapidly extract all links (Telegram Private/Public, Discord, WhatsApp) from digital noise.
     
-    OUTPUT: STRICT JSON ONLY. NO MARKDOWN.
-    Format:
+    PROTOCOLS:
+    1. WORD-BY-WORD SCAN: Detect URLs hidden in snippets or chat-like text.
+    2. PRIVATE SIGNAL: Identify "joinchat" and "+" links as [PRIVATE].
+    3. IDENTITY AWARENESS: Simulate scan using these active sessions: ${params.identities.map(i => i.platform).join(', ')}.
+    4. SOURCE DETECTION: Identify where the link was mentioned (e.g. "Pinned in Pedia-Group", "Message from @Admin").
+    5. SUGGESTION: Write a 1-sentence strategic suggestion for finding more private intel.
+    
+    SPEED MODE: BE CONCISE. OUTPUT ONLY JSON.
+    
+    JSON SCHEMA:
     {
-      "analysis": "Generate a 'MISSION REPORT' with headers: [EXECUTIVE SUMMARY], [KEY INTEL], [STRATEGIC ASSESSMENT]. Be concise.",
+      "analysis": "Executive summary of signals.",
+      "suggestion": "Human-like strategic advice.",
       "links": [
         {
-          "title": "Title of Group/Channel",
+          "title": "Group/Channel Name",
           "url": "Direct URL",
-          "platform": "Telegram|WhatsApp|Discord|etc",
+          "platform": "Telegram|WhatsApp|Discord|...",
           "type": "Group|Channel|Community",
-          "description": "Brief context",
-          "confidence": 95,
+          "description": "Short context",
+          "context": "The specific mention/snippet",
+          "sharedBy": "Who shared this link",
+          "confidence": 0-100,
           "status": "Active",
-          "tags": ["Direct Link", "Verified"]
+          "tags": ["Private", "Direct Link", "Mentioned"]
         }
       ]
     }
@@ -123,100 +96,95 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", // Flash model is fastest
-      contents: `SCAN QUERY: ${searchVector}`,
+      model: "gemini-3-flash-preview",
+      contents: `V9 TURBO SCAN: ${searchVector}. Identify all private and public uplinks.`,
       config: {
         systemInstruction,
-        tools: [{ googleSearch: {} }], 
-        temperature: 0.3, // Lower temperature for more deterministic/faster results
+        tools: [{ googleSearch: {} }],
+        temperature: 0.1,
+        // Disable thinking budget for maximum speed as per user request
+        thinkingConfig: { thinkingBudget: 0 }
       },
     });
 
     const rawData = parseSafeJSON(response.text);
     const grounding = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
 
-    // 1. Process Web Results (Fastest Path)
-    const verifiedLinks: IntelLink[] = grounding
+    // 1. EXTRACT FROM GROUNDING (Live Data)
+    const groundingLinks: IntelLink[] = grounding
       .filter((c: any) => c.web && c.web.uri)
       .map((c: any, i: number) => {
         const uri = c.web.uri;
-        let platform: PlatformType = 'Telegram'; 
-        let isDirect = false;
+        let platform: PlatformType = 'Telegram';
+        let isPrivate = false;
 
-        if (uri.includes('t.me') || uri.includes('telegram')) { platform = 'Telegram'; isDirect = true; }
-        else if (uri.includes('whatsapp') || uri.includes('chat.whatsapp')) { platform = 'WhatsApp'; isDirect = true; }
-        else if (uri.includes('discord')) { platform = 'Discord'; isDirect = true; }
-        else if (uri.includes('linkedin')) platform = 'LinkedIn';
-        else if (uri.includes('facebook')) platform = 'Facebook';
-        else if (uri.includes('x.com') || uri.includes('twitter')) platform = 'X';
-        else if (uri.includes('instagram')) platform = 'Instagram';
-        else if (uri.includes('reddit')) platform = 'Reddit';
-        else if (uri.includes('signal')) platform = 'Signal';
-
+        if (uri.includes('t.me/+') || uri.includes('joinchat')) { platform = 'Telegram'; isPrivate = true; }
+        else if (uri.includes('chat.whatsapp.com')) { platform = 'WhatsApp'; isPrivate = true; }
+        else if (uri.includes('discord.gg') || uri.includes('discord.com/invite')) { platform = 'Discord'; }
+        
         return {
           id: `g-${i}`,
-          title: c.web.title || `${platform} Signal`,
+          title: c.web.title || `Signal ${i}`,
           url: uri,
-          description: isDirect ? "Direct Invite Link Identified" : "Source Page containing relevant intel",
-          context: "Web Scan",
+          description: "Detected in platform discovery index.",
           platform,
-          type: params.scope === 'channels' ? 'Channel' : 'Group',
+          type: 'Group',
           status: 'Active',
-          confidence: isDirect ? 98 : 80,
+          confidence: isPrivate ? 95 : 75,
           source: "Live Index",
-          sharedBy: "Web",
-          tags: isDirect ? ['Direct Link'] : ['Source'],
+          tags: isPrivate ? ['Private', 'Direct Link'] : ['Discovery'],
           location: params.location?.country || 'Global'
         };
       });
 
-    // 2. Merge AI Insights
-    let finalLinks = [...verifiedLinks];
-    const seenUrls = new Set(verifiedLinks.map(l => l.url.toLowerCase()));
+    // 2. MERGE AI DISCOVERY (Simulation of Deep Chat Extraction)
+    let finalLinks = [...groundingLinks];
+    const seenUrls = new Set(groundingLinks.map(l => l.url.toLowerCase()));
 
-    if (rawData && rawData.links) {
-      rawData.links.forEach((aiLink: any) => {
-        if (!aiLink.url) return;
-        if (!seenUrls.has(aiLink.url.toLowerCase())) {
-           finalLinks.push({
-             ...aiLink,
-             id: `ai-${Math.random()}`,
-             confidence: aiLink.confidence || 85,
-             tags: aiLink.tags || ['Analyst Inferred']
-           });
+    if (rawData && Array.isArray(rawData.links)) {
+      rawData.links.forEach((link: any) => {
+        if (link.url && !seenUrls.has(link.url.toLowerCase())) {
+          finalLinks.push({
+            ...link,
+            id: `ai-${Math.random().toString(36).substr(2, 9)}`,
+            confidence: link.confidence || 80,
+            tags: link.tags || []
+          });
         }
       });
     }
 
-    // 3. Fast Filter
-    const userMinConf = params.filters?.minConfidence || 0;
-    const allowed = new Set(params.platforms.length > 0 ? params.platforms : ['Telegram', 'WhatsApp', 'Discord']);
+    // 3. FINAL AGGREGATION
+    const minConf = params.filters?.minConfidence || 5;
+    let results = finalLinks.filter(l => l.confidence >= minConf);
     
-    finalLinks = finalLinks.filter(l => {
-        if (l.confidence < userMinConf) return false;
-        // Always include target platforms + major aggregators
-        return allowed.has(l.platform) || ['Reddit', 'X', 'Facebook'].includes(l.platform);
-    });
+    if (params.platforms.length > 0) {
+      const pSet = new Set(params.platforms);
+      results = results.filter(l => pSet.has(l.platform));
+    }
 
-    // Sort: Direct Links first
-    finalLinks.sort((a, b) => {
-       const aScore = (a.tags.includes('Direct Link') ? 100 : 0) + a.confidence;
-       const bScore = (b.tags.includes('Direct Link') ? 100 : 0) + b.confidence;
-       return bScore - aScore;
+    results.sort((a, b) => {
+      const aW = (a.tags.includes('Private') ? 1000 : 0) + a.confidence;
+      const bW = (b.tags.includes('Private') ? 1000 : 0) + b.confidence;
+      return bW - aW;
     });
 
     return {
-      analysis: rawData?.analysis || "Scan complete. Intel compiled.",
-      links: finalLinks,
+      analysis: rawData?.analysis || "V9 Turbo scan complete. Signal landscape identified.",
+      suggestion: rawData?.suggestion || "Consider searching for center-specific codes (e.g. 'R1 KFSH' or 'R1 Military Hospital').",
+      links: results,
       stats: {
-        total: finalLinks.length,
-        platformDistribution: {}, 
-        topLocations: []
+        total: results.length,
+        platformDistribution: results.reduce((acc, curr) => {
+          acc[curr.platform] = (acc[curr.platform] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+        topLocations: Array.from(new Set(results.map(r => r.location).filter(Boolean))) as string[]
       }
     };
 
   } catch (error) {
-    console.error("ENGINE ERROR:", error);
+    console.error("V9 ENGINE FAILURE:", error);
     throw error;
   }
 };
