@@ -15,7 +15,6 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [result, setResult] = useState<SearchResult | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1400);
   const [logs, setLogs] = useState<string[]>([]);
   const [confirmingLink, setConfirmingLink] = useState<IntelLink | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,19 +32,9 @@ const App: React.FC = () => {
     { id: '8', name: 'Instagram', icon: 'fa-brands fa-instagram', connected: true, color: 'text-pink-500' }
   ];
 
-  const [history, setHistory] = useState<SearchHistoryItem[]>([]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('scout_v7.5_history');
-    if (saved) setHistory(JSON.parse(saved));
-    const handleResize = () => setIsSidebarOpen(window.innerWidth > 1400);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   const addLog = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString([], { hour12: false });
-    setLogs(prev => [...prev.slice(-40), `[${timestamp}] ${msg}`]);
+    setLogs(prev => [...prev.slice(-30), `[${timestamp}] ${msg}`]);
     setTimeout(() => {
       if (terminalRef.current) terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }, 50);
@@ -57,18 +46,10 @@ const App: React.FC = () => {
     );
   };
 
-  const selectAllPlatforms = () => setSelectedPlatforms(availablePlatforms.map(p => p.name as PlatformType));
-  const clearAllPlatforms = () => setSelectedPlatforms([]);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    addLog(`CLIPBOARD: Copied ${text.substring(0, 20)}...`);
-  };
-
   const handleSearch = async (targetQuery?: string) => {
     const finalQuery = (targetQuery || query).trim();
-    if (!finalQuery && !hospital.trim() && !specialty.trim()) {
-      setError("Please input a search target: Keyword, ID, Specialty, or Link.");
+    if (!finalQuery && !hospital && !specialty) {
+      setError("Input target parameters (Keyword, Specialty, or Institution).");
       return;
     }
 
@@ -76,18 +57,12 @@ const App: React.FC = () => {
     setError(null);
     setResult(null);
     setLogs([]);
-    setLoadingStep('Initializing Recon Engine v7.5 Ultimate...');
+    setLoadingStep('Initializing Neural Recon Protocol...');
 
-    addLog(`INITIATING ULTRA-SCAN PROTOCOL...`);
-    
     try {
-      setLoadingStep('Dorking Platform Matrix...');
-      addLog(`Type: ${searchType.toUpperCase()}`);
-      addLog(`Target: ${finalQuery || 'Multi-Vector'}`);
+      addLog(`ENGINE: Starting ultra-scan for "${finalQuery || specialty}"`);
+      addLog(`PLATFORMS: ${selectedPlatforms.length > 0 ? selectedPlatforms.join(', ') : 'Global Search'}`);
       
-      const platformsToUse = selectedPlatforms.length > 0 ? selectedPlatforms : availablePlatforms.map(p => p.name as PlatformType);
-      addLog(`Scanning: ${platformsToUse.length} Platforms`);
-
       const data = await searchGlobalIntel({
         query: finalQuery,
         location: location || 'Global',
@@ -96,345 +71,277 @@ const App: React.FC = () => {
         specialty,
         platforms: selectedPlatforms,
         searchType,
-        filters: { activeOnly: true, privateOnly: false, minConfidence: 85 }
+        filters: { activeOnly: true, privateOnly: false, minConfidence: 90 }
       });
 
       setResult(data);
-      addLog(`SUCCESS: ${data.links.length} nodes validated.`);
-      
-      const newHistoryItem: SearchHistoryItem = {
-        query: finalQuery || specialty || hospital,
-        location, town, hospital,
-        timestamp: new Date().toLocaleTimeString(),
-        type: searchType
-      };
-
-      setHistory(prev => {
-        const next = [newHistoryItem, ...prev.filter(i => i.query !== newHistoryItem.query)].slice(0, 15);
-        localStorage.setItem('scout_v7.5_history', JSON.stringify(next));
-        return next;
-      });
-
+      addLog(`SUCCESS: Found ${data.links.length} potential intelligence nodes.`);
+      addLog(`REASONING: ${data.analysis.substring(0, 50)}...`);
     } catch (err: any) {
-      console.error(err);
-      let errorMsg = "System Link Failed. Please retry.";
-      
-      if (err.message?.includes("API_KEY")) errorMsg = "DEPLOYMENT ERROR: Missing API Key.";
-      else if (err.message?.includes("429")) errorMsg = "SYSTEM OVERLOAD: Too many requests.";
-      
-      setError(errorMsg);
-      addLog(`ERROR: ${err.message || 'Unknown Failure'}`);
+      setError(err.message || "Operation failed.");
+      addLog(`FATAL: Signal loss during extraction.`);
     } finally {
       setLoading(false);
-      setLoadingStep('');
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#000000] text-gray-200 font-cairo overflow-x-hidden selection:bg-indigo-600/50 relative">
-      {/* Background FX */}
+    <div className="min-h-screen bg-[#010204] text-gray-200 font-cairo selection:bg-indigo-600/50 relative overflow-x-hidden">
+      
+      {/* Dynamic Background */}
       <div className="fixed inset-0 pointer-events-none z-0">
-         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,#1a1b2e_0%,#000000_80%)] opacity-70"></div>
-         <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage: 'linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px'}}></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e1b4b_0%,#010204_70%)] opacity-40"></div>
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-500 to-transparent"></div>
+        <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '50px 50px'}}></div>
       </div>
 
       {/* Loading Overlay */}
       {loading && (
-        <div className="fixed inset-0 z-[500] flex flex-col items-center justify-center bg-black/95 backdrop-blur-3xl animate-fadeIn">
-           <div className="w-80 h-80 rounded-full border border-indigo-500/20 flex items-center justify-center relative mb-12 shadow-[0_0_120px_rgba(79,70,229,0.3)]">
-              <div className="absolute inset-0 rounded-full border-t-[2px] border-indigo-500 animate-spin"></div>
-              <div className="absolute inset-8 rounded-full border-b-[2px] border-sky-500 animate-reverse-spin opacity-50"></div>
-              <i className="fa-solid fa-satellite-dish text-8xl text-white animate-pulse"></i>
-           </div>
-           <h2 className="text-5xl lg:text-7xl font-black text-white uppercase tracking-[0.2em] leading-tight text-center px-4 drop-shadow-2xl">{loadingStep}</h2>
-           <p className="text-indigo-400/60 font-mono text-xs uppercase tracking-[0.5em] mt-8 animate-pulse">SCOUT OPS v7.5 ULTIMATE</p>
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl animate-fadeIn">
+          <div className="relative w-64 h-64 flex items-center justify-center">
+            <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
+            <div className="absolute inset-0 border-t-4 border-indigo-500 rounded-full animate-spin"></div>
+            <div className="absolute inset-4 border-b-4 border-sky-400 rounded-full animate-reverse-spin opacity-50"></div>
+            <i className="fa-solid fa-satellite-dish text-6xl text-white animate-pulse"></i>
+          </div>
+          <h2 className="mt-12 text-4xl font-black text-white uppercase tracking-[0.2em]">{loadingStep}</h2>
+          <div className="mt-4 flex gap-2">
+            {[1,2,3].map(i => <div key={i} className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{animationDelay: `${i*0.2}s`}}></div>)}
+          </div>
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Link Access Modal */}
       {confirmingLink && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/95 backdrop-blur-3xl animate-fadeIn">
-          <div className="bg-[#05050a] border border-indigo-500/30 rounded-[3rem] p-12 max-w-2xl w-full shadow-[0_0_100px_rgba(79,70,229,0.2)] space-y-10 relative overflow-hidden">
-             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent"></div>
-             
-             <div className="text-center">
-                <div className="inline-flex items-center justify-center w-28 h-28 rounded-3xl bg-indigo-500/5 border border-indigo-500/20 text-indigo-400 mb-8">
-                   <i className={`fa-brands fa-${confirmingLink.platform.toLowerCase().replace('reddit', 'reddit-alien').replace('x', 'x-twitter')} text-5xl`}></i>
-                </div>
-                <h3 className="text-4xl font-black text-white uppercase tracking-tight mb-2 leading-tight">{confirmingLink.title}</h3>
-                <div className="flex justify-center gap-3">
-                    <span className="text-[10px] font-black bg-white/5 px-4 py-2 rounded-full uppercase tracking-widest text-gray-400">{confirmingLink.platform}</span>
-                    <span className="text-[10px] font-black bg-indigo-500/10 px-4 py-2 rounded-full uppercase tracking-widest text-indigo-400">{confirmingLink.source.type}</span>
-                </div>
-             </div>
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl animate-fadeIn">
+          <div className="bg-[#0a0a0f] border border-white/10 rounded-[2.5rem] p-12 max-w-xl w-full shadow-[0_0_80px_rgba(79,70,229,0.15)] space-y-8">
+            <div className="text-center">
+              <div className={`w-24 h-24 rounded-3xl mx-auto flex items-center justify-center text-4xl bg-white/5 border border-white/10 mb-6`}>
+                <i className={`fa-brands fa-${confirmingLink.platform.toLowerCase().replace('x', 'x-twitter')}`}></i>
+              </div>
+              <h3 className="text-3xl font-black text-white leading-tight">{confirmingLink.title}</h3>
+              <p className="text-indigo-400 font-mono text-xs uppercase tracking-widest mt-2">{confirmingLink.platform} Intelligence</p>
+            </div>
+            
+            <div className="p-6 bg-black rounded-2xl border border-white/5 font-mono text-xs break-all text-gray-400">
+              {confirmingLink.url}
+            </div>
 
-             <div className="space-y-4">
-                 <div className="bg-black/50 p-6 rounded-3xl border border-white/5 flex gap-4 items-center">
-                    <div className="flex-1 font-mono text-xs text-indigo-300 break-all select-all">{confirmingLink.url}</div>
-                    <button onClick={() => copyToClipboard(confirmingLink.url)} className="text-gray-500 hover:text-white transition-colors"><i className="fa-solid fa-copy"></i></button>
-                 </div>
-                 
-                 {confirmingLink.source.context && (
-                    <div className="bg-amber-500/5 p-6 rounded-3xl border border-amber-500/10">
-                        <span className="text-[9px] uppercase font-black text-amber-500/60 block mb-2 tracking-widest">Context</span>
-                        <div className="text-sm text-gray-300 italic">"{confirmingLink.source.context}"</div>
-                    </div>
-                 )}
-             </div>
-
-             <div className="flex gap-4 pt-4">
-                <button onClick={() => setConfirmingLink(null)} className="flex-1 py-6 bg-white/5 rounded-3xl font-black text-[11px] uppercase text-gray-400 hover:text-white transition-all">Cancel</button>
-                <button onClick={() => { window.open(confirmingLink.url, '_blank'); setConfirmingLink(null); }} className="flex-1 py-6 bg-indigo-600 text-white rounded-3xl font-black text-[11px] uppercase shadow-2xl hover:bg-indigo-500 transition-all">Connect</button>
-             </div>
+            <div className="flex gap-4">
+              <button onClick={() => setConfirmingLink(null)} className="flex-1 py-5 bg-white/5 rounded-2xl font-black text-[11px] uppercase text-gray-400 hover:text-white transition-all">Abort</button>
+              <button onClick={() => window.open(confirmingLink.url, '_blank')} className="flex-1 py-5 bg-indigo-600 rounded-2xl font-black text-[11px] uppercase text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 transition-all">Establish Link</button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed top-0 bottom-0 right-0 z-[120] bg-[#05050a]/98 border-l border-white/5 transition-all duration-700 backdrop-blur-4xl shadow-2xl ${isSidebarOpen ? 'w-[450px]' : 'w-0 invisible translate-x-full'}`}>
-        <div className="p-10 space-y-10 h-full overflow-y-auto flex flex-col no-scrollbar">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.2em]">COMMAND LOG</span>
-              <span className="text-[9px] font-bold text-gray-700 uppercase">SYSTEM ACTIVE</span>
-            </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-gray-500 hover:text-white transition-all"><i className="fa-solid fa-angles-right"></i></button>
-          </div>
-
-          <div className="flex-1 min-h-0 flex flex-col gap-4">
-             <div ref={terminalRef} className="flex-1 bg-black/40 rounded-[2rem] border border-white/5 p-8 font-mono text-[10px] text-indigo-400/80 overflow-y-auto space-y-3 custom-scrollbar">
-                {logs.length === 0 && <div className="opacity-20 text-center mt-20">SYSTEM STANDBY...</div>}
-                {logs.map((log, i) => (
-                    <div key={i} className="animate-fadeIn pl-4 border-l-2 border-indigo-500/20 leading-relaxed relative">
-                        <span className="absolute -left-[5px] top-1.5 w-1 h-1 bg-indigo-500 rounded-full"></span>
-                        {log}
-                    </div>
-                ))}
-             </div>
-          </div>
-
-          <div className="pt-8 border-t border-white/5">
-             <label className="text-[10px] font-black text-gray-700 uppercase tracking-widest mb-4 block">Recent Targets</label>
-             <div className="flex flex-wrap gap-2">
-                {history.map((h, i) => (
-                  <button key={i} onClick={() => { setQuery(h.query); handleSearch(h.query); }} className="px-4 py-3 bg-white/[0.03] rounded-xl border border-white/5 text-[10px] font-bold text-gray-500 hover:text-indigo-400 hover:border-indigo-500/30 transition-all truncate max-w-full">
-                     {h.query}
-                  </button>
-                ))}
-             </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className={`transition-all duration-700 p-6 lg:p-16 max-w-[1600px] mx-auto flex flex-col relative z-10 ${isSidebarOpen ? 'lg:mr-[450px]' : ''}`}>
+      <main className="relative z-10 max-w-7xl mx-auto p-6 lg:p-12 space-y-16 pt-24">
         
-        <header className="flex justify-between items-end mb-16">
-           <div className="flex items-center gap-8">
-              {!isSidebarOpen && (
-                <button onClick={() => setIsSidebarOpen(true)} className="w-16 h-16 bg-[#0a0a10] border border-white/10 rounded-2xl text-indigo-500 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-2xl"><i className="fa-solid fa-bars-staggered text-xl"></i></button>
-              )}
-              <div className="flex flex-col">
-                <h1 className="text-6xl lg:text-8xl font-black tracking-tighter text-white uppercase leading-none">SCOUT <span className="text-indigo-600">OPS</span></h1>
-                <div className="flex items-center gap-4 mt-2">
-                    <span className="h-0.5 w-12 bg-indigo-600"></span>
-                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.6em]">ULTIMATE v7.5</span>
-                </div>
-              </div>
-           </div>
+        {/* Header Section */}
+        <header className="flex flex-col items-center text-center space-y-6">
+          <div className="flex items-center gap-4 px-6 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
+            <span className="w-2 h-2 bg-indigo-500 rounded-full animate-ping"></span>
+            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em]">System Live: v7.5 Ultra Pro</span>
+          </div>
+          <h1 className="text-7xl lg:text-9xl font-black tracking-tighter text-white uppercase leading-none">
+            SCOUT<span className="text-indigo-600">OPS</span>
+          </h1>
+          <p className="text-gray-500 max-w-2xl font-medium text-lg lg:text-xl">
+            نظام الاستكشاف الرقمي المتقدم لتتبع المجتمعات الطبية والمهنية عبر كافة المنصات
+          </p>
         </header>
 
-        {/* Filters */}
-        <div className="space-y-12 mb-32">
-           
-           <div className="bg-[#0a0a10] border border-white/5 rounded-[3rem] p-10 relative overflow-hidden">
-              <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-3">
-                      <i className="fa-solid fa-layer-group text-indigo-500"></i> Platform Matrix
-                  </h3>
-                  <div className="flex gap-4">
-                      <button onClick={selectAllPlatforms} className="text-[10px] font-black text-gray-500 hover:text-indigo-400 uppercase tracking-wider transition-colors">Select All</button>
-                      <button onClick={clearAllPlatforms} className="text-[10px] font-black text-gray-500 hover:text-rose-400 uppercase tracking-wider transition-colors">Clear</button>
-                  </div>
-              </div>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-                 {availablePlatforms.map(p => (
-                    <button 
-                      key={p.name}
-                      onClick={() => togglePlatform(p.name as PlatformType)}
-                      className={`relative flex flex-col items-center justify-center gap-3 h-28 rounded-3xl border transition-all duration-300 group ${selectedPlatforms.includes(p.name as PlatformType) ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105 z-10' : 'bg-black/40 border-white/5 text-gray-600 hover:bg-white/5 hover:text-gray-300'}`}
-                    >
-                       <i className={`${p.icon} text-2xl group-hover:scale-110 transition-transform`}></i>
-                       <span className="text-[9px] font-black uppercase tracking-tight">{p.name}</span>
-                       {selectedPlatforms.includes(p.name as PlatformType) && (
-                           <span className="absolute top-3 right-3 w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_10px_white]"></span>
-                       )}
-                    </button>
-                 ))}
-              </div>
-           </div>
-
-           <div className="flex justify-center gap-3 flex-wrap">
-              {[
-                { id: 'medical-recon', label: 'Medical Groups', icon: 'fa-user-md' },
-                { id: 'mention-tracker', label: 'Mention Tracker', icon: 'fa-radar' },
-                { id: 'specialty-hunt', label: 'Specialty Hunt', icon: 'fa-graduation-cap' },
-                { id: 'user-id', label: 'ID Probe', icon: 'fa-fingerprint' },
-                { id: 'signal-phone', label: 'Phone Signal', icon: 'fa-mobile-screen' },
-                { id: 'deep-scan', label: 'Deep Scan', icon: 'fa-network-wired' }
-              ].map(t => (
-                <button key={t.id} onClick={() => { setSearchType(t.id as any); setResult(null); }} className={`px-8 py-4 rounded-full text-[10px] font-black uppercase border transition-all flex items-center gap-3 ${searchType === t.id ? 'bg-white text-black border-white shadow-[0_0_30px_rgba(255,255,255,0.2)] scale-105' : 'bg-[#0a0a10] border-white/10 text-gray-500 hover:border-white/30 hover:text-white'}`}>
-                   <i className={`fa-solid ${t.icon}`}></i> {t.label}
+        {/* Dashboard Controls */}
+        <section className="bg-white/[0.02] border border-white/5 rounded-[3rem] p-8 lg:p-12 backdrop-blur-3xl shadow-2xl space-y-12">
+          
+          {/* Platform Matrix */}
+          <div className="space-y-6">
+            <div className="flex justify-between items-center px-2">
+              <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">Platform Matrix</h3>
+              <button onClick={() => setSelectedPlatforms([])} className="text-[10px] font-bold text-gray-600 hover:text-white transition-colors">Clear All</button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+              {availablePlatforms.map(p => (
+                <button 
+                  key={p.name}
+                  onClick={() => togglePlatform(p.name as PlatformType)}
+                  className={`h-24 flex flex-col items-center justify-center gap-2 rounded-2xl border transition-all duration-300 group ${selectedPlatforms.includes(p.name as PlatformType) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-black/50 border-white/5 text-gray-600 hover:border-white/10 hover:text-gray-300'}`}
+                >
+                  <i className={`${p.icon} text-xl group-hover:scale-110 transition-transform`}></i>
+                  <span className="text-[9px] font-black uppercase tracking-tight">{p.name}</span>
                 </button>
               ))}
-           </div>
+            </div>
+          </div>
 
-           <div className="relative group max-w-5xl mx-auto">
-              <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-[3.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-              <div className="relative flex bg-[#05050a] rounded-[3.5rem] p-3 items-center shadow-2xl">
-                 <div className="pl-10 text-indigo-500 text-3xl">
-                    <i className="fa-solid fa-satellite-dish"></i>
-                 </div>
-                 <input 
-                    type="text" 
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                    placeholder={searchType === 'mention-tracker' ? "Enter link or keyword to track mentions..." : "Target: Keyword, Link, or ID..."}
-                    className="flex-1 bg-transparent py-6 px-8 text-2xl lg:text-3xl font-black text-white focus:outline-none placeholder:text-gray-800 tracking-tight"
-                 />
-                 <button onClick={() => handleSearch()} disabled={loading} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-[2.5rem] px-12 py-6 font-black uppercase text-xs tracking-widest transition-all shadow-lg active:scale-95">
-                    {loading ? 'Scanning...' : 'Execute'}
-                 </button>
-              </div>
-           </div>
-
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-6xl mx-auto">
+          {/* Search Module */}
+          <div className="space-y-8">
+            <div className="flex justify-center gap-2 flex-wrap">
               {[
-                { val: location, set: setLocation, ph: 'Country / Region', icon: 'fa-globe' },
-                { val: town, set: setTown, ph: 'City / Sector', icon: 'fa-city' },
-                { val: hospital, set: setHospital, ph: 'Hospital Name', icon: 'fa-hospital' },
-                { val: specialty, set: setSpecialty, ph: 'Specialty / Board', icon: 'fa-stethoscope' }
+                { id: 'medical-recon', label: 'Medical Groups', icon: 'fa-stethoscope' },
+                { id: 'mention-tracker', label: 'Mention Tracker', icon: 'fa-quote-left' },
+                { id: 'deep-scan', label: 'Deep Global Scan', icon: 'fa-globe' }
+              ].map(t => (
+                <button key={t.id} onClick={() => setSearchType(t.id as any)} className={`px-6 py-3 rounded-full text-[10px] font-black uppercase border transition-all flex items-center gap-3 ${searchType === t.id ? 'bg-white text-black border-white shadow-xl scale-105' : 'bg-transparent border-white/10 text-gray-500 hover:text-white'}`}>
+                  <i className={`fa-solid ${t.icon}`}></i> {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative group max-w-4xl mx-auto">
+              <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-sky-500 rounded-[3rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+              <div className="relative flex bg-black rounded-[3rem] p-2 items-center">
+                <input 
+                  type="text" 
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                  placeholder="Target Keyword, ID, or Link..."
+                  className="flex-1 bg-transparent py-6 px-10 text-2xl font-black text-white focus:outline-none placeholder:text-gray-800"
+                />
+                <button onClick={() => handleSearch()} disabled={loading} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-[2.5rem] px-10 py-6 font-black uppercase text-xs tracking-[0.2em] transition-all shadow-xl active:scale-95">
+                  {loading ? 'Processing...' : 'Execute'}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              {[
+                { val: location, set: setLocation, ph: 'Global Region', icon: 'fa-location-dot' },
+                { val: hospital, set: setHospital, ph: 'Target Institution', icon: 'fa-building-shield' },
+                { val: specialty, set: setSpecialty, ph: 'Specialty Focus', icon: 'fa-brain' }
               ].map((f, i) => (
-                <div key={i} className="flex items-center bg-[#0a0a10] border border-white/5 rounded-2xl px-6 py-4 focus-within:border-indigo-500/50 transition-colors">
-                   <i className={`fa-solid ${f.icon} text-gray-700 mr-4`}></i>
-                   <input type="text" value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph} className="bg-transparent text-sm font-bold text-gray-300 placeholder:text-gray-800 focus:outline-none w-full" />
+                <div key={i} className="flex items-center bg-black border border-white/5 rounded-2xl px-6 py-4">
+                  <i className={`fa-solid ${f.icon} text-indigo-500/50 mr-4`}></i>
+                  <input type="text" value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph} className="bg-transparent text-xs font-bold text-gray-400 placeholder:text-gray-800 focus:outline-none w-full" />
                 </div>
               ))}
-           </div>
-        </div>
+            </div>
+          </div>
+        </section>
 
-        {/* Results */}
+        {/* Results Deck */}
         {result && (
-          <div className="animate-fadeIn pb-40">
-             
-             <div className="flex flex-wrap justify-center gap-8 mb-16 border-b border-white/5 pb-16">
-                {[
-                  { label: 'Total Signals', val: result.stats.totalFound, color: 'text-white' },
-                  { label: 'Validated Nodes', val: result.links.length, color: 'text-indigo-400' },
-                  { label: 'Medical Matches', val: result.stats.medicalMatches, color: 'text-emerald-400' },
-                  { label: 'Accuracy', val: '99.9%', color: 'text-gray-400' }
-                ].map(s => (
-                  <div key={s.label} className="text-center px-8 border-r border-white/5 last:border-0">
-                     <div className={`text-4xl font-black ${s.color} tracking-tighter mb-2`}>{s.val}</div>
-                     <div className="text-[9px] font-black text-gray-700 uppercase tracking-widest">{s.label}</div>
+          <div className="animate-fadeIn space-y-12 pb-32">
+            
+            {/* Stats Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { label: 'Signals Captured', val: result.stats.totalFound, icon: 'fa-satellite' },
+                { label: 'Verified Nodes', val: result.links.length, icon: 'fa-shield-check' },
+                { label: 'Medical Index', val: result.stats.medicalMatches, icon: 'fa-file-medical' },
+                { label: 'Confidence', val: '98.4%', icon: 'fa-microchip' }
+              ].map(s => (
+                <div key={s.label} className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 flex flex-col items-center">
+                  <div className="text-4xl font-black text-white mb-2 tracking-tighter">{s.val}</div>
+                  <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2">
+                    <i className={`fa-solid ${s.icon} text-indigo-500`}></i> {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Terminal Feed */}
+            <div className="bg-[#050508] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+              <div className="bg-white/5 px-6 py-3 flex items-center justify-between border-b border-white/5">
+                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Live Terminal Feed</span>
+                <div className="flex gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                </div>
+              </div>
+              <div ref={terminalRef} className="h-40 p-6 font-mono text-[10px] text-gray-500 overflow-y-auto space-y-2 scroll-smooth">
+                {logs.map((log, i) => (
+                  <div key={i} className="flex gap-4">
+                    <span className="text-indigo-900 shrink-0">[{i}]</span>
+                    <span className="text-indigo-400/60 leading-relaxed">{log}</span>
                   </div>
                 ))}
-             </div>
+                {logs.length === 0 && <div className="opacity-20 italic">Waiting for connection...</div>}
+              </div>
+            </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {result.links.length === 0 ? (
-                  <div className="col-span-full py-40 text-center">
-                    <i className="fa-solid fa-wind text-6xl text-white/5 mb-6"></i>
-                    <h3 className="text-2xl font-black text-white/10 uppercase tracking-widest">No Intelligence Found</h3>
+            {/* Results Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {result.links.map(link => (
+                <div key={link.id} className="group bg-white/[0.02] border border-white/5 rounded-[2.5rem] p-10 hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all duration-500 flex flex-col relative overflow-hidden">
+                  
+                  <div className={`absolute top-0 right-0 px-6 py-2 rounded-bl-2xl text-[9px] font-black uppercase tracking-widest ${link.source.type === 'Direct' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                    {link.source.type} Signal
                   </div>
-                ) : (
-                  result.links.map(link => (
-                    <div key={link.id} className="group bg-[#0a0a10] border border-white/5 rounded-[2.5rem] p-10 hover:border-indigo-500/30 hover:bg-[#0f0f16] transition-all duration-300 flex flex-col relative overflow-hidden shadow-2xl">
-                       
-                       {link.source.type === 'Mention' && (
-                         <div className="absolute top-0 right-0 bg-amber-500/10 border-l border-b border-amber-500/20 px-6 py-2 rounded-bl-2xl">
-                            <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
-                               <i className="fa-solid fa-quote-left"></i> Mention
-                            </span>
-                         </div>
-                       )}
 
-                       {link.source.type === 'Direct' && (
-                         <div className="absolute top-0 right-0 bg-emerald-500/10 border-l border-b border-emerald-500/20 px-6 py-2 rounded-bl-2xl">
-                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-                               <i className="fa-solid fa-link"></i> Direct
-                            </span>
-                         </div>
-                       )}
-
-                       <div className="flex items-center gap-6 mb-8">
-                          <div className="w-16 h-16 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-3xl text-gray-500 group-hover:text-white group-hover:bg-indigo-600 group-hover:border-indigo-500 transition-all">
-                             <i className={`fa-brands fa-${link.platform.toLowerCase().replace('reddit', 'reddit-alien').replace('x', 'x-twitter')}`}></i>
-                          </div>
-                          <div>
-                             <h4 className="text-xl font-black text-white uppercase tracking-tight group-hover:text-indigo-400 transition-colors">{link.platform}</h4>
-                             <span className="text-[9px] font-bold text-gray-600 uppercase tracking-wider">{link.confidence}% Verified</span>
-                          </div>
-                       </div>
-
-                       <div className="flex-1 mb-8">
-                          <h3 className="text-lg font-bold text-gray-200 mb-4 line-clamp-2 leading-tight">{link.title}</h3>
-                          <p className="text-xs text-gray-500 font-medium leading-relaxed line-clamp-3">{link.description}</p>
-                       </div>
-
-                       <div className="bg-black/40 rounded-2xl p-4 border border-white/5 mb-8">
-                          <div className="flex items-center gap-2 mb-2 opacity-50">
-                             <i className="fa-solid fa-eye text-[10px] text-indigo-400"></i>
-                             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Source Context</span>
-                          </div>
-                          <div className="text-[10px] text-gray-300 italic font-mono leading-relaxed">
-                             "{link.source.context || link.source.name}"
-                          </div>
-                       </div>
-
-                       <button onClick={() => setConfirmingLink(link)} className="w-full py-4 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all border border-transparent hover:border-white/10">
-                          Access Node
-                       </button>
+                  <div className="flex items-center gap-6 mb-8">
+                    <div className="w-16 h-16 rounded-2xl bg-black border border-white/5 flex items-center justify-center text-3xl text-gray-600 group-hover:text-indigo-500 transition-colors">
+                      <i className={`fa-brands fa-${link.platform.toLowerCase().replace('x', 'x-twitter')}`}></i>
                     </div>
-                  ))
-                )}
-             </div>
+                    <div>
+                      <h4 className="text-xl font-black text-white group-hover:text-indigo-400 transition-colors">{link.platform}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                        <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">{link.confidence}% Confidence</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-4 mb-8">
+                    <h3 className="text-lg font-bold text-gray-200 leading-tight">{link.title}</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{link.description}</p>
+                  </div>
+
+                  <div className="bg-black/50 rounded-2xl p-4 border border-white/5 mb-8">
+                    <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest block mb-2">Intel Context</span>
+                    <p className="text-[10px] text-gray-400 italic font-mono leading-relaxed">
+                      "{link.source.context || link.source.name}"
+                    </p>
+                  </div>
+
+                  <button 
+                    onClick={() => setConfirmingLink(link)}
+                    className="w-full py-4 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-600/20 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-lg active:scale-95"
+                  >
+                    Initiate Connection
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {result.links.length === 0 && !loading && (
+              <div className="text-center py-32 border-2 border-dashed border-white/5 rounded-[4rem]">
+                <i className="fa-solid fa-radar text-6xl text-white/5 mb-6"></i>
+                <h3 className="text-2xl font-black text-white/20 uppercase tracking-[0.3em]">No Valid Signals Captured</h3>
+              </div>
+            )}
           </div>
         )}
 
         {error && (
-          <div className="text-center py-20 bg-[#0a0a10] border border-rose-500/20 rounded-[3rem] mt-20 animate-fadeIn">
-             <i className="fa-solid fa-triangle-exclamation text-5xl text-rose-500 mb-6"></i>
-             <h3 className="text-3xl font-black text-white uppercase mb-4">Connection Failed</h3>
-             <p className="text-rose-400/70 mb-8 max-w-xl mx-auto">{error}</p>
-             <button onClick={() => { setError(null); setQuery(''); }} className="px-10 py-4 bg-white/5 hover:bg-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest">Reset System</button>
+          <div className="max-w-xl mx-auto p-12 bg-rose-500/5 border border-rose-500/20 rounded-[3rem] text-center space-y-6 animate-shake">
+            <i className="fa-solid fa-triangle-exclamation text-5xl text-rose-500"></i>
+            <h3 className="text-2xl font-black text-white uppercase">Uplink Interrupted</h3>
+            <p className="text-rose-400/70 text-sm font-medium">{error}</p>
+            <button onClick={() => setError(null)} className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white rounded-full font-black text-[10px] uppercase tracking-widest transition-all">Retry Handshake</button>
           </div>
         )}
 
       </main>
 
-      <footer className="fixed bottom-8 left-0 right-0 text-center pointer-events-none z-50 mix-blend-difference">
-         <span className="text-[10px] font-black text-white/30 uppercase tracking-[1em]">SCOUT OPS v7.5 ULTIMATE</span>
+      <footer className="fixed bottom-8 left-0 right-0 flex justify-center pointer-events-none z-50">
+        <div className="bg-black/80 backdrop-blur-xl border border-white/5 px-8 py-3 rounded-full flex items-center gap-8 shadow-2xl">
+          <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">Operational Status: <span className="text-indigo-500">Normal</span></span>
+          <div className="h-4 w-px bg-white/10"></div>
+          <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">Extraction Mode: <span className="text-sky-500">{searchType.replace('-', ' ')}</span></span>
+        </div>
       </footer>
 
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes reverse-spin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-        .animate-fadeIn { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes reverse-spin { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
         .animate-reverse-spin { animation: reverse-spin 10s linear infinite; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-        .backdrop-blur-4xl { backdrop-filter: blur(60px); }
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus, 
-        input:-webkit-autofill:active{
-            -webkit-box-shadow: 0 0 0 30px #05050a inset !important;
-            -webkit-text-fill-color: white !important;
-        }
+        .animate-shake { animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) both; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 10px; }
+        .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
       `}</style>
     </div>
   );
