@@ -29,6 +29,8 @@ export interface ConnectedIdentity {
   email?: string; // The email used for verification
   password?: string; // Stored for auto-login simulation
   authProvider?: 'google' | 'facebook' | 'apple' | 'manual'; // How they logged in
+  connectionMethod?: 'oauth_handshake' | 'api_key' | 'simulated'; // The method of connection
+  apiKey?: string; // Real API key if provided
   verifiedAt: string;
 }
 
