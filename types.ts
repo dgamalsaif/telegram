@@ -36,9 +36,6 @@ export interface IntelMessage {
   content: string;
   author: string;
   platform: PlatformType;
-  date: string;
-  sourceGroup: string;
-  sourceUrl?: string;
   relevance: number;
 }
 
@@ -52,7 +49,6 @@ export interface SearchResult {
     privateCount: number;
     activeCount: number;
     hospitalMatches: number;
-    hiddenMatches: number;
   };
 }
 

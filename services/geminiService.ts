@@ -1,5 +1,6 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
-import { SearchResult, IntelLink, IntelMessage, SearchParams, PlatformType } from "../types";
+import { SearchResult, IntelLink, SearchParams, PlatformType } from "../types";
 
 const parseSafeJSON = (text: string): any => {
   try {
@@ -16,8 +17,8 @@ const parseSafeJSON = (text: string): any => {
 };
 
 /**
- * SCOUT CORE v7.5 | The Ultimate OSINT Neural Engine
- * Enhanced with Deep-Scan v7.6 logic for hidden communities and encrypted signals.
+ * SCOUT CORE v7.5 | Pure Original Edition
+ * Optimized for maximum signal detection across Telegram, WhatsApp, and social grids.
  */
 export const searchGlobalIntel = async (params: SearchParams): Promise<SearchResult> => {
   const apiKey = process.env.API_KEY;
@@ -28,55 +29,53 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
   const queryBase = params.query.trim();
   const geoContext = `${params.location} ${params.town || ''} ${params.hospital || ''}`.trim();
   
-  // Tactical Multi-Platform Search Vector v7.5
+  // Tactical v7.5 Search Vector - Broad Platform Support
   const platformsToSearch = [
     't.me', 'chat.whatsapp.com', 'discord.gg', 'facebook.com/groups', 
     'instagram.com', 'linkedin.com/groups', 'tiktok.com', 'twitter.com', 'x.com'
   ];
   
-  let searchVector = platformsToSearch.map(site => `site:${site}`).join(' OR ') + ` "${queryBase}" ${geoContext}`;
+  // Base keywords to trigger community discovery
+  const intelKeywords = `("joinchat" OR "invite" OR "invite link" OR "t.me/+" OR "chat.whatsapp.com/invite")`;
+  
+  let searchVector = `(${platformsToSearch.map(site => `site:${site}`).join(' OR ')}) ${intelKeywords} "${queryBase}" ${geoContext}`;
   
   if (params.searchType === 'signal-phone') {
     searchVector = `(site:t.me OR site:chat.whatsapp.com) "${queryBase}" OR "phone ${queryBase}" OR "wa.me/${queryBase}"`;
   } else if (params.searchType === 'user-id') {
-    searchVector = `"${queryBase}" (inurl:profile OR inurl:user OR inurl:id OR "@${queryBase}") (site:telegram.me OR site:t.me OR site:facebook.com OR site:twitter.com OR site:instagram.com OR site:linkedin.com)`;
+    searchVector = `"${queryBase}" (inurl:profile OR inurl:user OR inurl:id OR "@${queryBase}") (site:t.me OR site:facebook.com OR site:twitter.com OR site:instagram.com)`;
   } else if (params.searchType === 'deep-scan') {
-    // Expanded deep-scan logic to include hidden and unindexed patterns
-    searchVector = `"${queryBase}" ${geoContext} (intext:"join group" OR intext:"invite link" OR "chat history" OR "leaked messages" OR "hidden community" OR "encrypted messages" OR "unindexed public pages" OR "secret chat")`;
+    searchVector = `"${queryBase}" ${geoContext} (intext:"join group" OR intext:"invite link" OR "chat history" OR "leaked" OR "secret group")`;
+  } else if (params.searchType === 'medical-scan') {
+    searchVector = `(site:t.me OR site:chat.whatsapp.com) "${params.hospital || queryBase}" ${params.location} ("medical" OR "staff" OR "emergency")`;
   }
 
   const systemInstruction = `You are SCOUT OPS v7.5 ULTIMATE OSINT ENGINE.
   Your mission is to find digital communities, group links, user profiles, and specific messages across Telegram, WhatsApp, Discord, Facebook, X, Instagram, LinkedIn, and TikTok.
 
-  SPECIAL DIRECTIVE: For 'deep-scan' operations, you MUST explicitly look for 'hidden communities', 'encrypted messages', and 'unindexed public pages' related to the query.
-
   SEARCH PARAMETERS:
   - Target: ${queryBase}
-  - Type: ${params.searchType}
-  - Location: ${params.location}
-  - Town: ${params.town || 'N/A'}
-  - Hospital: ${params.hospital || 'N/A'}
-
+  - Sector: ${geoContext}
+  
   CONSTRAINTS:
-  1. Identify both PUBLIC and PRIVATE groups (private often have keywords like "joinchat" or "invite").
-  2. Extract message snippets that appear in the results.
-  3. Categorize precisely by platform.
-  4. Ensure Geographic relevance to the provided country/town/hospital.
-  5. Identify findings that qualify as 'hidden matches' (unindexed or encrypted references).
-  6. OUTPUT MUST BE VALID JSON ONLY.
+  1. Detect both PUBLIC and PRIVATE groups.
+  2. Extract raw message content if available in search snippets.
+  3. Map location data strictly to the search query.
+  4. Flag invites (t.me/+, joinchat, invite) as isPrivate: true.
+  5. OUTPUT MUST BE VALID JSON ONLY.
 
   JSON Schema:
   {
-    "analysis": "A professional summary of the recon finding",
+    "analysis": "Summary of recon findings",
     "links": [{"title", "description", "url", "platform", "confidence", "isPrivate", "isActive", "location": {"country", "town", "hospital"}, "source": {"name", "uri"}}],
     "messages": [{"content", "author", "platform", "relevance"}],
     "sources": [{"title", "uri"}],
-    "stats": {"totalFound", "privateCount", "activeCount", "hospitalMatches", "hiddenMatches"}
+    "stats": {"totalFound", "privateCount", "activeCount", "hospitalMatches"}
   }`;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `[EXECUTE GLOBAL RECON v7.5 - DEEP SCAN ENHANCED] SECTOR: ${geoContext} | QUERY: ${queryBase} | VECTOR: ${searchVector}`,
+    contents: `[EXECUTE GLOBAL RECON v7.5] QUERY: ${queryBase} VECTOR: ${searchVector}`,
     config: {
       systemInstruction,
       tools: [{ googleSearch: {} }],
@@ -110,16 +109,7 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
           },
           messages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { content: { type: Type.STRING }, author: { type: Type.STRING }, platform: { type: Type.STRING }, relevance: { type: Type.NUMBER } } } },
           sources: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, uri: { type: Type.STRING } } } },
-          stats: { 
-            type: Type.OBJECT, 
-            properties: { 
-              totalFound: { type: Type.NUMBER }, 
-              privateCount: { type: Type.NUMBER }, 
-              activeCount: { type: Type.NUMBER }, 
-              hospitalMatches: { type: Type.NUMBER },
-              hiddenMatches: { type: Type.NUMBER }
-            } 
-          }
+          stats: { type: Type.OBJECT, properties: { totalFound: { type: Type.NUMBER }, privateCount: { type: Type.NUMBER }, activeCount: { type: Type.NUMBER }, hospitalMatches: { type: Type.NUMBER } } }
         }
       }
     },
@@ -128,7 +118,7 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
   const resultData = parseSafeJSON(response.text);
   const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
 
-  // Manual Signal Extraction (Grounding Fallback)
+  // Grounding Signal Recovery Logic
   const recoveredLinks: IntelLink[] = groundingChunks
     .filter((c: any) => c.web)
     .map((c: any, i: number) => {
@@ -144,11 +134,11 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
       else if (url.includes('x.com') || url.includes('twitter.com')) platform = 'X';
 
       return {
-        id: `v7.5-link-${i}-${Math.random().toString(36).substr(2, 4)}`,
+        id: `v7.5-signal-${i}-${Date.now()}`,
         title,
-        description: `إشارة تم التقاطها آلياً من المصدر المفتوح للتحقق الميداني.`,
+        description: `إشارة استخباراتية مسترجعة عبر المسح الميداني المباشر.`,
         url,
-        isPrivate: url.includes('joinchat') || url.includes('invite') || url.includes('group') || url.includes('private'),
+        isPrivate: url.includes('joinchat') || url.includes('/+/') || url.includes('invite'),
         isActive: true,
         platform,
         confidence: 100,
@@ -160,18 +150,16 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
 
   if (!resultData) {
     return {
-      analysis: "نظام الاسترداد التلقائي v7.5 مفعل. تم سحب البيانات المباشرة من محرك البحث لضمان شمولية التغطية.",
+      analysis: "تم استرداد الإشارات المباشرة من الشبكة العالمية لضمان شمولية التغطية.",
       links: recoveredLinks,
       messages: [],
       sources: recoveredLinks.map(l => ({ title: l.title, uri: l.url })),
-      stats: { totalFound: recoveredLinks.length, privateCount: recoveredLinks.filter(l => l.isPrivate).length, activeCount: recoveredLinks.length, hospitalMatches: 0, hiddenMatches: 0 }
+      stats: { totalFound: recoveredLinks.length, privateCount: recoveredLinks.filter(l => l.isPrivate).length, activeCount: recoveredLinks.length, hospitalMatches: 0 }
     };
   }
 
-  // Merge Data
   const existingUrls = new Set((resultData.links || []).map((l: any) => l.url.toLowerCase()));
-  const uniqueRecovered = recoveredLinks.filter(rl => !existingUrls.has(rl.url.toLowerCase()));
-  const finalLinks = [...(resultData.links || []), ...uniqueRecovered];
+  const finalLinks = [...(resultData.links || []), ...recoveredLinks.filter(rl => !existingUrls.has(rl.url.toLowerCase()))];
 
   return {
     ...resultData,
@@ -180,8 +168,7 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
       ...resultData.stats,
       totalFound: finalLinks.length,
       activeCount: finalLinks.length,
-      privateCount: finalLinks.filter((l: any) => l.isPrivate).length,
-      hiddenMatches: resultData.stats.hiddenMatches || 0
+      privateCount: finalLinks.filter((l: any) => l.isPrivate).length
     }
   };
 };
