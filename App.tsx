@@ -642,7 +642,7 @@ const App: React.FC = () => {
   const [medical, setMedical] = useState<SearchParams['medicalContext']>({});
   
   // New Filter State
-  const [filters, setFilters] = useState({ minConfidence: 60, onlyActive: false });
+  const [filters, setFilters] = useState({ minConfidence: 50, onlyActive: false }); // Updated default confidence to 50%
 
   // UI State
   const [connectModalOpen, setConnectModalOpen] = useState(false);

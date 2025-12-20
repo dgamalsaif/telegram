@@ -75,18 +75,31 @@ const buildSearchVector = (params: SearchParams): string => {
       if(sLower.includes('family') || sLower.includes('fam')) {
           enhancedSpecialty = '("Family Medicine" OR "FM" OR "Fam Med" OR "طب الأسرة" OR "طب أسرة")';
       } else if (sLower.includes('pedia')) {
-          enhancedSpecialty = '("Pediatrics" OR "Pedia" OR "طب أطفال")';
+          enhancedSpecialty = '("Pediatrics" OR "Pedia" OR "طب أطفال" OR "طب الأطفال")';
       } else if (sLower.includes('internal') || sLower === 'im') {
            enhancedSpecialty = '("Internal Medicine" OR "IM" OR "الباطنة")';
       } else if (sLower.includes('surgery') || sLower === 'gs') {
            enhancedSpecialty = '("General Surgery" OR "GS" OR "جراحة عامة")';
+      } else if (sLower.includes('dent') || sLower.includes('asnan')) {
+           enhancedSpecialty = '("Dentistry" OR "Dental" OR "طب الأسنان")';
       }
 
       // Generic context layer that works for ANY specialty word typed
       const enContext = `("Board" OR "Residency" OR "Fellowship" OR "Community" OR "Study Group" OR "Residents" OR "Exam Prep")`;
-      const arContext = `("بورد" OR "زمالة" OR "تجمع" OR "أطباء" OR "قروب" OR "دراسة")`;
+      const arContext = `("بورد" OR "زمالة" OR "تجمع" OR "أطباء" OR "قروب" OR "دراسة" OR "الهيئة السعودية")`;
       
-      coreQuery = `(${enhancedSpecialty} ${level}) (${enContext} OR ${arContext})`;
+      const medicalLogic = `(${enhancedSpecialty} ${level}) (${enContext} OR ${arContext})`;
+
+      // CRITICAL FIX: Ensure the original query (which may contain location like "Saudi Arabia") 
+      // is NOT lost during the vector construction.
+      if (!medicalContext?.specialty && query) {
+         // User typed freeform (e.g. "Pediatric Board in Saudi Arabia"). 
+         // We add the original query to the vector to capture the location intent.
+         coreQuery = `(${query}) AND ${medicalLogic}`;
+      } else {
+         // User used fields, or we want to prioritize the constructed logic
+         coreQuery = query ? `"${query}" AND ${medicalLogic}` : medicalLogic;
+      }
   }
 
   // 5. LOCATION LOCK
@@ -125,11 +138,12 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
     The 'analysis' field must be a structured TEXT REPORT (use \\n for new lines) with the following headers:
     [EXECUTIVE SUMMARY], [KEY INTEL], [STRATEGIC ASSESSMENT].
     
-    Ensure the report analyzes the specific topic provided in the query ("${params.query}"), regardless of what it is.
+    CRITICAL: The report MUST focus on the specific query "${params.query}".
+    If searching for Medical/Board groups (e.g., Pediatrics in Saudi Arabia), analyze the relevance of found communities to the residency/board exams.
     
     JSON Structure:
     {
-      "analysis": "[EXECUTIVE SUMMARY]\\nBrief overview of findings for the requested topic.\\n\\n[KEY INTEL]\\nSpecific high-value targets found.\\n\\n[STRATEGIC ASSESSMENT]\\nAnalysis of the activity level and authenticity.",
+      "analysis": "[EXECUTIVE SUMMARY]\\nBrief overview of findings.\\n\\n[KEY INTEL]\\nSpecific high-value targets found.\\n\\n[STRATEGIC ASSESSMENT]\\nAnalysis of the activity level and authenticity.",
       "links": [
         {
           "title": "Page Title",
