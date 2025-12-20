@@ -2,10 +2,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SearchResult, IntelLink, SearchParams, PlatformType } from "../types";
 
+/**
+ * Robust JSON extraction from model response
+ */
 const parseSafeJSON = (text: string): any => {
   try {
     let cleanText = text.trim();
-    // Aggressive cleanup for markdown
+    // Remove markdown code blocks if present
     cleanText = cleanText.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
     const firstBrace = cleanText.indexOf('{');
     const lastBrace = cleanText.lastIndexOf('}');
@@ -20,19 +23,31 @@ const parseSafeJSON = (text: string): any => {
 };
 
 /**
- * SCOUT OPS v7.5 ULTRA PRO | CORE INTELLIGENCE SERVICE
- * Utilizing Gemini 3 Pro with Google Search Grounding for link discovery.
+ * وظيفة لاختبار الاتصال السريع بالمحرك
  */
-export const searchGlobalIntel = async (params: SearchParams): Promise<SearchResult> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API_KEY_MISSING");
+export const testConnection = async (): Promise<boolean> => {
+  try {
+    // Correct Initialization: Always use a named parameter and process.env.API_KEY directly
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: "ping",
+    });
+    // Extracting text output via the .text property (not a method)
+    return !!response.text;
+  } catch (e) {
+    console.error("API Connection Test Failed:", e);
+    return false;
+  }
+};
 
-  const ai = new GoogleGenAI({ apiKey });
+export const searchGlobalIntel = async (params: SearchParams): Promise<SearchResult> => {
+  // Correct Initialization: Always use a named parameter and process.env.API_KEY directly
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const queryBase = params.query.trim();
   const geoContext = [params.location, params.specialty].filter(Boolean).join(' ');
   
-  // High-precision Dorks for Invite Discovery
   const platformVectors: Record<string, string> = {
     'Telegram': '(site:t.me OR site:telegram.me OR "t.me/+")',
     'WhatsApp': '(site:chat.whatsapp.com OR "chat.whatsapp")',
@@ -58,66 +73,26 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
 
   const searchVector = `(${searchScope}) ${specializedTerms} "${queryBase}" ${geoContext}`;
 
-  const systemInstruction = `You are SCOUT OPS Intelligence v7.5. Your mission is to locate, categorize, and verify community invite links.
-
-PROTOCOLS:
-1. Identify EXACT URLs for Telegram channels, WhatsApp groups, Discord invites, etc.
-2. Provide a descriptive analysis of the community found.
-3. Categorize results as "Direct" (if it's an invite link) or "Mention" (if it's a discussion about a link).
-4. Assign a confidence score (0-100) based on link validity.
-
-Output strictly valid JSON.`;
+  const systemInstruction = `You are SCOUT OPS Intelligence v7.5. Your mission is to locate, categorize, and verify community invite links. Output strictly valid JSON with the following structure: { "analysis": "summary string", "links": [{"title": "...", "description": "...", "url": "...", "platform": "...", "confidence": 0-100, "source": {"name": "...", "uri": "...", "type": "...", "context": "..."}}], "stats": {"totalFound": number, "medicalMatches": number} }.`;
 
   try {
+    // Complex Text Task: Use gemini-3-pro-preview
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: `[INITIATE_OSINT_RECON] TARGET: "${queryBase}" | VECTOR: ${searchVector}`,
       config: {
         systemInstruction,
+        // Search Grounding: Only googleSearch is permitted.
         tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            analysis: { type: Type.STRING },
-            links: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  url: { type: Type.STRING },
-                  platform: { type: Type.STRING },
-                  confidence: { type: Type.NUMBER },
-                  source: {
-                    type: Type.OBJECT,
-                    properties: { 
-                      name: { type: Type.STRING }, 
-                      uri: { type: Type.STRING }, 
-                      type: { type: Type.STRING }, 
-                      context: { type: Type.STRING } 
-                    }
-                  }
-                }
-              }
-            },
-            stats: {
-              type: Type.OBJECT,
-              properties: {
-                totalFound: { type: Type.NUMBER },
-                medicalMatches: { type: Type.NUMBER }
-              }
-            }
-          }
-        }
+        // Note: Per guidelines, response.text may not be strictly JSON when using googleSearch.
+        // We use system instructions for JSON and handle potential formatting variances in parseSafeJSON.
       },
     });
 
     const data = parseSafeJSON(response.text);
     const grounding = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
 
-    // Integrate Grounding Data
+    // Search Grounding: Extract URLs from groundingChunks and include them in the results
     const verifiedLinks: IntelLink[] = grounding
       .filter((c: any) => c.web)
       .map((c: any, i: number) => {
@@ -125,11 +100,9 @@ Output strictly valid JSON.`;
         let platform: PlatformType = 'Telegram';
         if (url.includes('whatsapp')) platform = 'WhatsApp';
         else if (url.includes('discord')) platform = 'Discord';
-        else if (url.includes('linkedin')) platform = 'LinkedIn';
         else if (url.includes('facebook')) platform = 'Facebook';
-        else if (url.includes('reddit')) platform = 'Reddit';
-        else if (url.includes('twitter') || url.includes('x.com')) platform = 'X';
-
+        else if (url.includes('x.com') || url.includes('twitter')) platform = 'X';
+        
         return {
           id: `v-${i}-${Date.now()}`,
           title: c.web.title || "Discovered Signal",
@@ -158,18 +131,15 @@ Output strictly valid JSON.`;
       location: { country: params.location }
     }));
 
-    // Merge & Deduplicate
+    // Merge verified links from grounding chunks and links suggested in the text response
     const allLinks = [...verifiedLinks];
     const seenUrls = new Set(verifiedLinks.map(v => v.url.toLowerCase()));
-
     aiLinks.forEach((al: any) => {
-      if (!seenUrls.has(al.url.toLowerCase())) {
-        allLinks.push(al);
-      }
+      if (al.url && !seenUrls.has(al.url.toLowerCase())) allLinks.push(al);
     });
 
     return {
-      analysis: data?.analysis || "Operation complete. System synchronized.",
+      analysis: data?.analysis || "Operation complete.",
       links: allLinks,
       messages: [],
       sources: verifiedLinks.map(l => ({ title: l.title, uri: l.url })),
@@ -180,7 +150,6 @@ Output strictly valid JSON.`;
         medicalMatches: data?.stats?.medicalMatches || allLinks.length
       }
     };
-
   } catch (error) {
     console.error("Engine Fault:", error);
     throw error;
