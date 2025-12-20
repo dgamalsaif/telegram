@@ -28,6 +28,7 @@ export interface ConnectedIdentity {
   value: string; // The username or handle
   email?: string; // The email used for verification
   password?: string; // Stored for auto-login simulation
+  authProvider?: 'google' | 'facebook' | 'apple' | 'manual'; // How they logged in
   verifiedAt: string;
 }
 

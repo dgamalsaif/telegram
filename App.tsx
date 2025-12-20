@@ -51,209 +51,291 @@ const ConnectModal = ({
   onClose: () => void, 
   onConnect: (id: ConnectedIdentity) => void 
 }) => {
-  // Steps: login -> sending_code -> enter_code -> verifying -> success
-  const [step, setStep] = useState<'login' | 'sending_code' | 'enter_code' | 'verifying' | 'success'>('login');
+  const [mode, setMode] = useState<'selection' | 'social_oauth' | 'manual'>('selection');
+  const [authProvider, setAuthProvider] = useState<'google' | 'facebook' | 'apple' | null>(null);
   
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [saveCreds, setSaveCreds] = useState(true);
-  const [statusMsg, setStatusMsg] = useState('');
+  // Manual Flow State
+  const [manualStep, setManualStep] = useState<'form' | 'security' | 'verify'>('form');
+  const [manualUser, setManualUser] = useState('');
+  const [manualPass, setManualPass] = useState('');
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualCode, setManualCode] = useState('');
+  
+  // Social Flow State
+  const [oauthStep, setOauthStep] = useState<'account_picker' | 'connecting' | 'success'>('account_picker');
 
   if (!platform) return null;
-
   const platformData = ALL_PLATFORMS.find(p => p.id === platform);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if(!username || !password || !email) return;
+  // --- Handlers ---
 
-    setStep('sending_code');
-    // Simulate API call to send email
-    setTimeout(() => {
-        setStep('enter_code');
-    }, 2000);
+  const startSocialLogin = (provider: 'google' | 'facebook' | 'apple') => {
+      setAuthProvider(provider);
+      setMode('social_oauth');
+      setOauthStep('account_picker');
   };
 
-  const handleVerifyCode = (e: React.FormEvent) => {
-      e.preventDefault();
-      if(code.length < 4) return;
-      
-      setStep('verifying');
-      setStatusMsg("Validating 2FA Token...");
-      
+  const handleSocialAccountClick = () => {
+      setOauthStep('connecting');
+      // Simulate network request
       setTimeout(() => {
-          setStep('success');
+          setOauthStep('success');
+          // Finalize
           setTimeout(() => {
-            onConnect({
-                platform,
-                type: 'handle',
-                value: username,
-                email: email,
-                password: saveCreds ? password : '', // Store password if requested
-                verifiedAt: new Date().toISOString()
-            });
-            onClose();
+              onConnect({
+                  platform,
+                  type: 'email',
+                  value: 'scout_operator',
+                  email: 'operator@gmail.com',
+                  authProvider: authProvider!,
+                  verifiedAt: new Date().toISOString()
+              });
+              onClose();
           }, 1500);
       }, 2000);
   };
 
+  const handleManualSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      setManualStep('security');
+      setTimeout(() => setManualStep('verify'), 2500); // Simulate email sending time
+  };
+
+  const handleManualVerify = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(manualCode.length < 4) return;
+      onConnect({
+          platform,
+          type: 'handle',
+          value: manualUser,
+          email: manualEmail,
+          password: manualPass,
+          authProvider: 'manual',
+          verifiedAt: new Date().toISOString()
+      });
+      onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
       <div className="bg-[#1e2024] border border-slate-700 rounded-2xl w-full max-w-sm relative overflow-hidden shadow-2xl">
         
         {/* Header */}
         <div className="bg-[#0f1115] px-4 py-3 border-b border-slate-700 flex justify-between items-center">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-200">
                 <i className={`${platformData?.icon} ${platformData?.color}`}></i>
-                <span>Log in to {platform}</span>
+                <span>Sign in to {platform}</span>
             </div>
             <button onClick={onClose} className="text-slate-500 hover:text-white">
                 <i className="fa-solid fa-xmark"></i>
             </button>
         </div>
 
-        <div className="p-6">
-            {step === 'login' && (
-                <form onSubmit={handleLogin} className="space-y-4">
+        <div className="p-6 min-h-[350px] flex flex-col justify-center">
+            
+            {/* SCREEN 1: METHOD SELECTION */}
+            {mode === 'selection' && (
+                <div className="space-y-4">
                     <div className="text-center mb-6">
-                        <div className={`w-16 h-16 mx-auto rounded-xl bg-[#0f1115] flex items-center justify-center text-3xl mb-3 border border-slate-700 ${platformData?.color}`}>
+                        <div className={`w-14 h-14 mx-auto rounded-xl bg-[#0f1115] flex items-center justify-center text-3xl mb-3 border border-slate-700 ${platformData?.color}`}>
                              <i className={platformData?.icon}></i>
                         </div>
-                        <h3 className="text-white font-bold">Authorize Access</h3>
-                        <p className="text-xs text-slate-400">Enter credentials to enable deep search.</p>
+                        <h3 className="text-white font-bold text-lg">Choose Account</h3>
+                        <p className="text-[11px] text-slate-400">Select an account to authorize SCOUT OPS access.</p>
                     </div>
 
-                    <div className="space-y-3">
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Username / Handle</label>
-                            <input 
+                    <button 
+                        onClick={() => startSocialLogin('google')}
+                        className="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3 rounded-lg text-sm transition-colors flex items-center justify-center gap-3"
+                    >
+                        <i className="fa-brands fa-google text-red-500 text-lg"></i>
+                        Continue with Google
+                    </button>
+
+                    <button 
+                        onClick={() => startSocialLogin('facebook')}
+                        className="w-full bg-[#1877F2] hover:bg-[#166fe5] text-white font-bold py-3 rounded-lg text-sm transition-colors flex items-center justify-center gap-3"
+                    >
+                        <i className="fa-brands fa-facebook text-white text-lg"></i>
+                        Continue with Facebook
+                    </button>
+
+                    <button 
+                        onClick={() => startSocialLogin('apple')}
+                        className="w-full bg-black border border-slate-700 hover:bg-slate-900 text-white font-bold py-3 rounded-lg text-sm transition-colors flex items-center justify-center gap-3"
+                    >
+                        <i className="fa-brands fa-apple text-white text-lg"></i>
+                        Continue with Apple
+                    </button>
+
+                    <div className="relative flex py-2 items-center">
+                        <div className="flex-grow border-t border-slate-700"></div>
+                        <span className="flex-shrink-0 mx-2 text-[9px] text-slate-500 uppercase">Or</span>
+                        <div className="flex-grow border-t border-slate-700"></div>
+                    </div>
+
+                    <button 
+                         onClick={() => setMode('manual')}
+                         className="w-full bg-transparent border border-slate-600 text-slate-400 hover:text-white hover:border-slate-500 py-2.5 rounded-lg text-xs font-bold transition-all"
+                    >
+                        Log in with Username / Email
+                    </button>
+                </div>
+            )}
+
+            {/* SCREEN 2: OAUTH SIMULATION (Account Picker) */}
+            {mode === 'social_oauth' && (
+                <div className="animate-in slide-in-from-right-10 duration-300">
+                    {oauthStep === 'account_picker' && (
+                        <>
+                            <div className="text-center mb-6">
+                                <i className={`fa-brands fa-${authProvider} text-4xl mb-3 ${authProvider === 'google' ? 'text-red-500' : authProvider === 'facebook' ? 'text-blue-500' : 'text-white'}`}></i>
+                                <h3 className="text-white font-bold">Choose an account</h3>
+                                <p className="text-[11px] text-slate-400">to continue to {platform}</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                {/* Simulated Account Row */}
+                                <div 
+                                    onClick={handleSocialAccountClick}
+                                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 cursor-pointer border border-transparent hover:border-slate-600 transition-all group"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                                        OP
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-sm font-bold text-slate-200 group-hover:text-white">Scout Operator</div>
+                                        <div className="text-xs text-slate-500">operator@gmail.com</div>
+                                    </div>
+                                    <i className="fa-solid fa-chevron-right text-slate-600 group-hover:text-white text-xs"></i>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 cursor-pointer border border-transparent hover:border-slate-600 transition-all opacity-60 hover:opacity-100">
+                                    <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 text-sm">
+                                        <i className="fa-solid fa-user-plus"></i>
+                                    </div>
+                                    <div className="text-sm font-medium text-slate-400">Use another account</div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {oauthStep === 'connecting' && (
+                        <div className="text-center space-y-6 py-8">
+                            <div className="relative w-16 h-16 mx-auto">
+                                <div className="absolute inset-0 border-4 border-slate-700 rounded-full"></div>
+                                <div className="absolute inset-0 border-t-4 border-indigo-500 rounded-full animate-spin"></div>
+                            </div>
+                            <div>
+                                <h4 className="text-white font-bold">Signing in as Scout Operator...</h4>
+                                <p className="text-xs text-slate-500 mt-1">Sharing credentials with {platform}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {oauthStep === 'success' && (
+                        <div className="text-center space-y-4 py-8">
+                            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-500/50">
+                                <i className="fa-solid fa-check text-2xl"></i>
+                            </div>
+                            <h4 className="text-white font-bold">Successfully Logged In</h4>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* SCREEN 3: MANUAL FALLBACK */}
+            {mode === 'manual' && (
+                <div className="animate-in slide-in-from-right-10 duration-300">
+                    {manualStep === 'form' && (
+                        <form onSubmit={handleManualSubmit} className="space-y-3">
+                            <button type="button" onClick={() => setMode('selection')} className="text-[10px] text-slate-500 mb-2 hover:text-white flex items-center gap-1">
+                                <i className="fa-solid fa-arrow-left"></i> Back to options
+                            </button>
+                            <div>
+                                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">ID / Email</label>
+                                <input 
+                                    required
+                                    type="text" 
+                                    className="w-full bg-black border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
+                                    value={manualUser}
+                                    onChange={e => setManualUser(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Verify Email Address</label>
+                                <input 
+                                    required
+                                    type="email" 
+                                    className="w-full bg-black border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
+                                    value={manualEmail}
+                                    onChange={e => setManualEmail(e.target.value)}
+                                    placeholder="For verification code..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Password</label>
+                                <input 
+                                    required
+                                    type="password" 
+                                    className="w-full bg-black border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
+                                    value={manualPass}
+                                    onChange={e => setManualPass(e.target.value)}
+                                />
+                            </div>
+                            <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg text-sm mt-2">
+                                Send Verification Email
+                            </button>
+                        </form>
+                    )}
+
+                    {manualStep === 'security' && (
+                        <div className="text-center py-8 space-y-4">
+                            <i className="fa-solid fa-paper-plane text-4xl text-indigo-500 animate-bounce"></i>
+                            <div>
+                                <h4 className="text-white font-bold">Sending Verification Email...</h4>
+                                <p className="text-xs text-slate-400">Please check {manualEmail}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {manualStep === 'verify' && (
+                        <form onSubmit={handleManualVerify} className="space-y-4">
+                             <div className="text-center mb-4">
+                                <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30 mb-2">
+                                    <i className="fa-solid fa-envelope-open text-emerald-400"></i>
+                                </div>
+                                <h4 className="text-white font-bold">Check your Inbox</h4>
+                                <p className="text-[10px] text-slate-400">We sent a code to <span className="text-white">{manualEmail}</span></p>
+                             </div>
+                             <input 
                                 type="text" 
-                                value={username}
-                                onChange={e => setUsername(e.target.value)}
-                                className="w-full bg-black border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
-                                placeholder={`Your ${platform} username...`}
+                                placeholder="000000"
+                                className="w-full bg-black border border-slate-600 rounded-lg py-3 text-center text-2xl font-mono tracking-widest text-white focus:border-emerald-500 outline-none"
+                                value={manualCode}
+                                onChange={e => setManualCode(e.target.value.slice(0,6))}
                                 autoFocus
-                            />
-                        </div>
-                         <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Password</label>
-                            <input 
-                                type="password" 
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                className="w-full bg-black border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
-                                placeholder="••••••••"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Verification Email</label>
-                            <input 
-                                type="email" 
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
-                                className="w-full bg-black border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
-                                placeholder="name@example.com"
-                            />
-                            <p className="text-[9px] text-slate-500 mt-1">We will send a verification code to this email.</p>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 pt-2">
-                           <input 
-                             type="checkbox" 
-                             id="saveCreds"
-                             checked={saveCreds}
-                             onChange={e => setSaveCreds(e.target.checked)}
-                             className="rounded bg-black border-slate-600 text-indigo-500 focus:ring-indigo-500"
-                           />
-                           <label htmlFor="saveCreds" className="text-xs text-slate-400 cursor-pointer">Remember me (Auto-Login)</label>
-                        </div>
-                    </div>
-
-                    <button 
-                        type="submit"
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg text-sm transition-colors shadow-lg mt-2"
-                    >
-                        Verify & Log In
-                    </button>
-                </form>
-            )}
-
-            {step === 'sending_code' && (
-                <div className="py-12 text-center space-y-4">
-                     <i className="fa-solid fa-paper-plane text-4xl text-indigo-500 animate-bounce"></i>
-                     <div>
-                        <div className="text-sm font-bold text-white">Sending Verification Code</div>
-                        <div className="text-xs text-slate-400">Please check {email}...</div>
-                     </div>
+                             />
+                             <p className="text-[9px] text-center text-slate-500">Training Code: 123456</p>
+                             <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg text-sm">
+                                Verify & Connect
+                             </button>
+                        </form>
+                    )}
                 </div>
             )}
 
-            {step === 'enter_code' && (
-                <form onSubmit={handleVerifyCode} className="space-y-6">
-                     <div className="text-center">
-                        <i className="fa-solid fa-envelope-open-text text-3xl text-emerald-400 mb-3"></i>
-                        <h3 className="text-white font-bold">Check Your Email</h3>
-                        <p className="text-xs text-slate-400">We sent a 6-digit code to <span className="text-white">{email}</span></p>
-                    </div>
-
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 text-center">Enter Verification Code</label>
-                        <input 
-                            type="text" 
-                            value={code}
-                            onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0,6))}
-                            className="w-full bg-black border border-slate-600 rounded-lg px-3 py-4 text-center text-2xl font-mono tracking-[0.5em] text-white focus:border-emerald-500 outline-none"
-                            placeholder="000000"
-                            autoFocus
-                        />
-                        <p className="text-[9px] text-center text-slate-500 mt-2">Use '123456' for training simulation</p>
-                    </div>
-
-                    <button 
-                        type="submit"
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg text-sm transition-colors shadow-lg"
-                    >
-                        Confirm Code
-                    </button>
-                </form>
-            )}
-
-            {step === 'verifying' && (
-                <div className="py-8 text-center space-y-4">
-                    <div className="relative w-16 h-16 mx-auto">
-                        <div className="absolute inset-0 border-4 border-slate-700 rounded-full"></div>
-                        <div className="absolute inset-0 border-t-4 border-emerald-500 rounded-full animate-spin"></div>
-                        <i className="fa-solid fa-lock absolute inset-0 flex items-center justify-center text-slate-500"></i>
-                    </div>
-                    <div>
-                        <div className="text-sm font-bold text-white mb-1">Authenticating Session</div>
-                        <div className="text-xs text-emerald-400 font-mono animate-pulse">{statusMsg}</div>
-                    </div>
-                </div>
-            )}
-
-            {step === 'success' && (
-                <div className="py-8 text-center space-y-4">
-                     <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-500/50">
-                        <i className="fa-solid fa-check text-2xl"></i>
-                    </div>
-                    <div>
-                        <div className="text-sm font-bold text-white">Identity Verified</div>
-                        <div className="text-xs text-slate-400 mt-1">Credentials Stored Securely</div>
-                    </div>
-                </div>
-            )}
         </div>
         
-        {step === 'login' && (
-             <div className="bg-[#0f1115] px-4 py-3 text-center border-t border-slate-700">
-                <span className="text-[10px] text-slate-500">
-                    <i className="fa-solid fa-lock mr-1"></i> End-to-End Encrypted Handshake
-                </span>
-            </div>
-        )}
+        {/* Footer */}
+        <div className="bg-[#0f1115] px-4 py-2 text-center border-t border-slate-700 flex justify-between items-center">
+            <span className="text-[9px] text-slate-500">
+                <i className="fa-solid fa-shield-halved mr-1"></i> OAuth 2.0 Protocol
+            </span>
+             <span className="text-[9px] text-slate-500">
+                Secure Session
+            </span>
+        </div>
       </div>
     </div>
   );
@@ -314,8 +396,93 @@ const FilterSidebar = ({
         </button>
       </div>
 
+      {/* Identity Module */}
+      <SidebarSection title="Identity Uplink" icon="fa-solid fa-fingerprint" defaultOpen={true}>
+        <div className="bg-indigo-950/10 border border-indigo-500/20 rounded-xl p-4 relative group">
+          <div className="space-y-3">
+             {identities.length === 0 ? (
+               <div className="p-3 rounded-lg border border-dashed border-slate-700 text-center">
+                 <p className="text-[9px] text-slate-500 mb-2 font-mono">NO ACTIVE SESSIONS</p>
+                 <p className="text-[8px] text-slate-600">Connect accounts to access private intel.</p>
+               </div>
+             ) : (
+               <div className="flex flex-col gap-2">
+                  {identities.map((id: ConnectedIdentity, idx: number) => (
+                    <div key={idx} className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center justify-between group">
+                       <div className="flex items-center gap-2">
+                          {/* Provider Icon */}
+                          <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-[10px]">
+                              {id.authProvider === 'google' && <i className="fa-brands fa-google text-red-500"></i>}
+                              {id.authProvider === 'facebook' && <i className="fa-brands fa-facebook text-blue-600"></i>}
+                              {id.authProvider === 'apple' && <i className="fa-brands fa-apple text-black"></i>}
+                              {(!id.authProvider || id.authProvider === 'manual') && <i className="fa-solid fa-user text-slate-600"></i>}
+                          </div>
+                          <div className="overflow-hidden">
+                            <div className="text-[10px] font-bold text-emerald-400 truncate">{id.platform}</div>
+                            <div className="text-[8px] text-slate-400 font-mono truncate w-28">{id.email || id.value}</div>
+                          </div>
+                       </div>
+                       <i className="fa-solid fa-link text-emerald-500/50 text-xs"></i>
+                    </div>
+                  ))}
+               </div>
+             )}
+          </div>
+        </div>
+      </SidebarSection>
+
+      {/* Platform Filters - UPDATED WITH EXPLICIT CONNECT BUTTONS */}
+      <SidebarSection title="Network Targets" icon="fa-solid fa-network-wired" defaultOpen={true}>
+        <div className="space-y-2">
+          {ALL_PLATFORMS.map(p => {
+            const isConnected = identities.some((i: any) => i.platform === p.id);
+            const isSelected = platforms.includes(p.id);
+
+            return (
+              <div key={p.id} className="flex gap-2 group">
+                {/* Selection Toggle */}
+                <button
+                  onClick={() => togglePlatform(p.id)}
+                  className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg border text-[10px] font-bold uppercase transition-all duration-300 hover:scale-[1.02] active:scale-95 ${
+                    isSelected 
+                      ? 'bg-white/10 border-white/20 text-white shadow' 
+                      : 'bg-transparent border-white/5 text-slate-600 hover:border-white/10 hover:text-slate-400'
+                  }`}
+                >
+                  <i className={`${p.icon} text-sm ${isSelected ? p.color : ''}`}></i>
+                  {p.id}
+                  
+                  {isConnected && (
+                     <div className="ml-auto flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)] animate-pulse"></div>
+                     </div>
+                  )}
+                </button>
+                
+                {/* Connect / Manage Button */}
+                <button 
+                  onClick={() => onOpenConnect(p.id)}
+                  className={`px-3 flex items-center justify-center rounded-lg border transition-all hover:scale-105 ${
+                    isConnected 
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                      : 'bg-indigo-600 hover:bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                  }`}
+                  title={isConnected ? "Manage Connection" : `Connect ${p.id}`}
+                >
+                  {isConnected ? (
+                      <i className="fa-solid fa-check text-xs"></i>
+                  ) : (
+                      <span className="text-[8px] font-bold uppercase">Connect</span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </SidebarSection>
+      
       {/* Search Analysis Filters */}
-      <SidebarSection title="Signal Filters" icon="fa-solid fa-filter" defaultOpen={true}>
+      <SidebarSection title="Signal Filters" icon="fa-solid fa-filter">
          <div className="space-y-4">
             <div>
               <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase mb-2">
@@ -341,78 +508,6 @@ const FilterSidebar = ({
                </button>
             </div>
          </div>
-      </SidebarSection>
-
-      {/* Identity Module */}
-      <SidebarSection title="Identity Uplink" icon="fa-solid fa-fingerprint" defaultOpen={true}>
-        <div className="bg-indigo-950/10 border border-indigo-500/20 rounded-xl p-4 relative group">
-          <div className="space-y-3">
-             {identities.length === 0 ? (
-               <div className="p-3 rounded-lg border border-dashed border-slate-700 text-center">
-                 <p className="text-[9px] text-slate-500 mb-2 font-mono">NO ACTIVE ACCOUNTS</p>
-                 <p className="text-[8px] text-slate-600">Connect platforms below to enable deep search.</p>
-               </div>
-             ) : (
-               <div className="flex flex-col gap-2">
-                  {identities.map((id: ConnectedIdentity, idx: number) => (
-                    <div key={idx} className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center justify-between group">
-                       <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                          <div>
-                            <div className="text-[10px] font-bold text-emerald-400">{id.platform}</div>
-                            <div className="text-[8px] text-slate-400 font-mono">{id.value}</div>
-                          </div>
-                       </div>
-                       <i className="fa-solid fa-shield-check text-emerald-500/50"></i>
-                    </div>
-                  ))}
-               </div>
-             )}
-          </div>
-        </div>
-      </SidebarSection>
-
-      {/* Platform Filters */}
-      <SidebarSection title="Network Targets" icon="fa-solid fa-network-wired" defaultOpen={true}>
-        <div className="space-y-2">
-          {ALL_PLATFORMS.map(p => {
-            const isConnected = identities.some((i: any) => i.platform === p.id);
-            const isSelected = platforms.includes(p.id);
-
-            return (
-              <div key={p.id} className="flex gap-2 group">
-                <button
-                  onClick={() => togglePlatform(p.id)}
-                  className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg border text-[10px] font-bold uppercase transition-all duration-300 hover:scale-[1.02] active:scale-95 ${
-                    isSelected 
-                      ? 'bg-white/10 border-white/20 text-white shadow' 
-                      : 'bg-transparent border-white/5 text-slate-600 hover:border-white/10 hover:text-slate-400'
-                  }`}
-                >
-                  <i className={`${p.icon} text-sm ${isSelected ? p.color : ''}`}></i>
-                  {p.id}
-                  
-                  <div className="ml-auto flex items-center gap-1.5">
-                    {isConnected && <div className="text-[8px] text-emerald-500 font-mono">AUTH</div>}
-                    <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)] animate-pulse' : 'bg-red-500/30'}`}></div>
-                  </div>
-                </button>
-                
-                <button 
-                  onClick={() => onOpenConnect(p.id)}
-                  className={`w-10 flex items-center justify-center rounded-lg border transition-all hover:scale-105 ${
-                    isConnected 
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]' 
-                      : 'bg-transparent border-white/5 text-slate-700 hover:text-white hover:bg-white/10 hover:border-white/20'
-                  }`}
-                  title={isConnected ? "Reconnect/Update" : `Connect ${p.id} Account`}
-                >
-                  <i className={`fa-solid ${isConnected ? 'fa-user-check' : 'fa-plug'} text-xs`}></i>
-                </button>
-              </div>
-            );
-          })}
-        </div>
       </SidebarSection>
 
       {/* Geo Filters */}
@@ -543,7 +638,7 @@ const App: React.FC = () => {
   const handleConnectIdentity = (id: ConnectedIdentity) => {
     // Replace existing identity for this platform if it exists
     setIdentities(prev => [...prev.filter(i => i.platform !== id.platform), id]); 
-    log(`SECURE HANDSHAKE: ${id.platform} account verified for user: ${id.value}`);
+    log(`OAUTH HANDSHAKE: ${id.platform} authorized via ${id.authProvider || 'Manual'}.`);
     log(`ACCESS LEVEL ELEVATED: Authorized for deep search on ${id.platform}.`);
   };
 
