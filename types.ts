@@ -55,7 +55,7 @@ export interface SearchResult {
   };
 }
 
-export type SearchType = 'topic' | 'user' | 'medical-scan' | 'deep-scan';
+export type SearchType = 'topic' | 'user-id' | 'signal-phone' | 'medical-scan' | 'deep-scan';
 
 export interface SearchParams {
   query: string;
@@ -78,15 +78,4 @@ export interface SearchHistoryItem {
   hospital?: string;
   timestamp: string;
   type: SearchType;
-}
-
-declare global {
-  interface Window {
-    process: {
-      env: {
-        API_KEY?: string;
-        [key: string]: any;
-      };
-    };
-  }
 }

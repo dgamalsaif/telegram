@@ -1,6 +1,6 @@
 {
-  "name": "SCOUT OPS v17.0 | Neural Nexus",
-  "description": "نظام استخباراتي فائق السرعة (v17.0) للبحث الاستقصائي، يتميز بمحرك Neural Nexus الذي يحل مشاكل التأخير ويوفر نتائج دقيقة للمجتمعات العامة والمرافق الطبية.",
+  "name": "SCOUT OPS v7.5 | Ultimate OSINT",
+  "description": "نظام الاستخبارات الرقمية المتكامل للبحث عن المجتمعات، الرسائل، والمرافق الطبية عبر كافة المنصات العالمية.",
   "requestFramePermissions": [
     "geolocation"
   ]

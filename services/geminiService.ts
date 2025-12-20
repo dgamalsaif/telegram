@@ -17,8 +17,7 @@ const parseSafeJSON = (text: string): any => {
 };
 
 /**
- * SCOUT CORE v17.0 | Neural Nexus Engine
- * Optimized for high-speed signal recovery
+ * SCOUT CORE v7.5 | The Ultimate OSINT Neural Engine
  */
 export const searchGlobalIntel = async (params: SearchParams): Promise<SearchResult> => {
   const apiKey = process.env.API_KEY;
@@ -29,27 +28,51 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
   const queryBase = params.query.trim();
   const geoContext = `${params.location} ${params.town || ''} ${params.hospital || ''}`.trim();
   
-  // Refined high-yield search vectors for v17 speed
-  const searchVector = `(site:chat.whatsapp.com OR site:t.me OR site:discord.gg) "${queryBase}" ${geoContext}`;
+  // Tactical Multi-Platform Search Vector v7.5
+  const platformsToSearch = [
+    't.me', 'chat.whatsapp.com', 'discord.gg', 'facebook.com/groups', 
+    'instagram.com', 'linkedin.com/groups', 'tiktok.com', 'twitter.com', 'x.com'
+  ];
+  
+  let searchVector = platformsToSearch.map(site => `site:${site}`).join(' OR ') + ` "${queryBase}" ${geoContext}`;
+  
+  if (params.searchType === 'signal-phone') {
+    searchVector = `(site:t.me OR site:chat.whatsapp.com) "${queryBase}" OR "phone ${queryBase}" OR "wa.me/${queryBase}"`;
+  } else if (params.searchType === 'user-id') {
+    searchVector = `"${queryBase}" (inurl:profile OR inurl:user OR inurl:id OR "@${queryBase}") (site:telegram.me OR site:t.me OR site:facebook.com OR site:twitter.com OR site:instagram.com OR site:linkedin.com)`;
+  } else if (params.searchType === 'deep-scan') {
+    searchVector = `"${queryBase}" ${geoContext} (intext:"join group" OR intext:"invite link" OR "chat history" OR "leaked messages")`;
+  }
 
-  const systemInstruction = `You are the SCOUT OPS v17.0 Neural Nexus Engine.
-  MISSION: Instant reconnaissance of public digital communities.
-  
-  RULES:
-  1. NO PHONE NUMBERS: This feature is disabled. Focus on keywords and geography.
-  2. SPEED: Extract verified links from Google Search grounding IMMEDIATELY.
-  3. JSON ONLY: Your output must be valid JSON.
-  
-  Response Schema:
-  - analysis: Executive summary.
-  - links: Array of IntelLink (id, title, description, url, platform, confidence, location, source).
-  - messages: Relevant intercepted snippets.
-  - sources: Verification links.
-  - stats: Metrics.`;
+  const systemInstruction = `You are SCOUT OPS v7.5 ULTIMATE OSINT ENGINE.
+  Your mission is to find digital communities, group links, user profiles, and specific messages across Telegram, WhatsApp, Discord, Facebook, X, Instagram, LinkedIn, and TikTok.
+
+  SEARCH PARAMETERS:
+  - Target: ${queryBase}
+  - Type: ${params.searchType}
+  - Location: ${params.location}
+  - Town: ${params.town || 'N/A'}
+  - Hospital: ${params.hospital || 'N/A'}
+
+  CONSTRAINTS:
+  1. Identify both PUBLIC and PRIVATE groups (private often have keywords like "joinchat" or "invite").
+  2. Extract message snippets that appear in the results.
+  3. Categorize precisely by platform.
+  4. Ensure Geographic relevance to the provided country/town/hospital.
+  5. OUTPUT MUST BE VALID JSON ONLY.
+
+  JSON Schema:
+  {
+    "analysis": "A professional summary of the recon finding",
+    "links": [{"title", "description", "url", "platform", "confidence", "isPrivate", "isActive", "location": {"country", "town", "hospital"}, "source": {"name", "uri"}}],
+    "messages": [{"content", "author", "platform", "relevance"}],
+    "sources": [{"title", "uri"}],
+    "stats": {"totalFound", "privateCount", "activeCount", "hospitalMatches"}
+  }`;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `[RECON CMD] TARGET: ${queryBase} | GEO: ${geoContext} | VECT: ${searchVector}`,
+    contents: `[EXECUTE GLOBAL RECON v7.5] SECTOR: ${geoContext} | QUERY: ${queryBase} | VECTOR: ${searchVector}`,
     config: {
       systemInstruction,
       tools: [{ googleSearch: {} }],
@@ -76,7 +99,7 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
                 },
                 source: {
                   type: Type.OBJECT,
-                  properties: { name: { type: Type.STRING }, uri: { type: Type.STRING }, type: { type: Type.STRING } }
+                  properties: { name: { type: Type.STRING }, uri: { type: Type.STRING } }
                 }
               }
             }
@@ -92,24 +115,27 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
   const resultData = parseSafeJSON(response.text);
   const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
 
-  // Aggressive Signal Recovery (V17.0 Ultra)
+  // Manual Signal Extraction (Grounding Fallback)
   const recoveredLinks: IntelLink[] = groundingChunks
     .filter((c: any) => c.web)
     .map((c: any, i: number) => {
       const url = c.web.uri || '';
-      const title = c.web.title || 'Live Signal';
+      const title = c.web.title || 'Signal Detected';
       let platform: PlatformType = 'Telegram';
       if (url.includes('whatsapp.com')) platform = 'WhatsApp';
       else if (url.includes('discord')) platform = 'Discord';
-      else if (url.includes('facebook')) platform = 'Facebook';
-      else if (url.includes('x.com') || url.includes('twitter')) platform = 'X';
+      else if (url.includes('facebook.com')) platform = 'Facebook';
+      else if (url.includes('instagram.com')) platform = 'Instagram';
+      else if (url.includes('linkedin.com')) platform = 'LinkedIn';
+      else if (url.includes('tiktok.com')) platform = 'TikTok';
+      else if (url.includes('x.com') || url.includes('twitter.com')) platform = 'X';
 
       return {
-        id: `v17-node-${i}-${Math.random().toString(36).substr(2, 5)}`,
+        id: `v7.5-link-${i}-${Math.random().toString(36).substr(2, 4)}`,
         title,
-        description: `إشارة موثقة مستخرجة من فهارس الويب الحية لضمان الدقة الكاملة. المصدر: ${title}`,
+        description: `إشارة تم التقاطها آلياً من المصدر المفتوح للتحقق الميداني.`,
         url,
-        isPrivate: url.includes('joinchat') || url.includes('invite') || url.includes('group'),
+        isPrivate: url.includes('joinchat') || url.includes('invite') || url.includes('group') || url.includes('private'),
         isActive: true,
         platform,
         confidence: 100,
@@ -121,7 +147,7 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
 
   if (!resultData) {
     return {
-      analysis: "تم تفعيل بروتوكول Nexus Recovery الفوري. النتائج المعروضة هي روابط مباشرة تم التحقق منها عبر فحص الفهارس الحية.",
+      analysis: "نظام الاسترداد التلقائي v7.5 مفعل. تم سحب البيانات المباشرة من محرك البحث لضمان شمولية التغطية.",
       links: recoveredLinks,
       messages: [],
       sources: recoveredLinks.map(l => ({ title: l.title, uri: l.url })),
@@ -129,6 +155,7 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
     };
   }
 
+  // Merge Data
   const existingUrls = new Set((resultData.links || []).map((l: any) => l.url.toLowerCase()));
   const uniqueRecovered = recoveredLinks.filter(rl => !existingUrls.has(rl.url.toLowerCase()));
   const finalLinks = [...(resultData.links || []), ...uniqueRecovered];
@@ -140,7 +167,7 @@ export const searchGlobalIntel = async (params: SearchParams): Promise<SearchRes
       ...resultData.stats,
       totalFound: finalLinks.length,
       activeCount: finalLinks.length,
-      privateCount: finalLinks.filter(l => l.isPrivate).length
+      privateCount: finalLinks.filter((l: any) => l.isPrivate).length
     }
   };
 };
