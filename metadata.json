@@ -1,6 +1,6 @@
 {
-  "name": "SCOUT OPS v7.5 Pro | Medical OSINT",
-  "description": "النظام الاستقصائي المتطور v7.5 - المتخصص في تتبع المجتمعات الطبية والأكاديمية والمهنية عبر كافة المنصات الرقمية.",
+  "name": "SCOUT OPS v7.5 Ultra Pro",
+  "description": "نظام استكشاف رقمي متطور للبحث عن المجتمعات المهنية والطبية عبر الإنترنت باستخدام الذكاء الاصطناعي.",
   "requestFramePermissions": [
     "geolocation"
   ]
