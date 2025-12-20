@@ -930,6 +930,25 @@ const App: React.FC = () => {
                 <button 
                     onClick={() => {
                         const params = {
+                            query: "Family Medicine Board",
+                            mode: "medical-residency" as SearchMode,
+                            location: { country: "Global" }, // or specific
+                            medicalContext: { specialty: "Family Medicine", level: "Board" }
+                        };
+                         setQuery(params.query);
+                         setMode(params.mode);
+                         setGeo(params.location);
+                         setMedical(params.medicalContext);
+                         handleSearch(params);
+                    }}
+                    className="bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                >
+                    <i className="fa-solid fa-people-roof"></i> Family Med Board
+                </button>
+
+                <button 
+                    onClick={() => {
+                        const params = {
                             query: "Pediatric Board Saudi Arabia",
                             mode: "medical-residency" as SearchMode,
                             location: { country: "Saudi Arabia" },

@@ -57,9 +57,27 @@ const buildSearchVector = (params: SearchParams): string => {
   if (mode === 'medical-residency' || query.toLowerCase().includes('residency') || query.toLowerCase().includes('board')) {
       const specialty = medicalContext?.specialty || query;
       const level = medicalContext?.level || '';
-      const arSpecialty = `("تجمع ${specialty}" OR "اطباء ${specialty}" OR "زمالة" OR "بورد")`;
-      const enSpecialty = `("Saudi Board" OR "Arab Board" OR "SCFHS" OR "R1" OR "R2" OR "Resident" OR "Fellowship")`;
-      coreQuery = `(${specialty} ${level}) (${arSpecialty} OR ${enSpecialty})`;
+      
+      // Advanced Aliases for High Precision
+      let enhancedSpecialty = `"${specialty}"`;
+      const sLower = specialty.toLowerCase();
+
+      // Semantic Mapping
+      if(sLower.includes('family') || sLower.includes('fam')) {
+          enhancedSpecialty = '("Family Medicine" OR "FM" OR "Fam Med" OR "طب الأسرة" OR "طب أسرة")';
+      } else if (sLower.includes('pedia')) {
+          enhancedSpecialty = '("Pediatrics" OR "Pedia" OR "طب أطفال")';
+      } else if (sLower.includes('internal') || sLower === 'im') {
+           enhancedSpecialty = '("Internal Medicine" OR "IM" OR "الباطنة")';
+      } else if (sLower.includes('surgery') || sLower === 'gs') {
+           enhancedSpecialty = '("General Surgery" OR "GS" OR "جراحة عامة")';
+      }
+
+      // Context Keywords (Residency, Board, Fellowship, etc.)
+      const enContext = `("Saudi Board" OR "Arab Board" OR "SCFHS" OR "Residency" OR "Fellowship" OR "R1" OR "R2")`;
+      const arContext = `("بورد" OR "زمالة" OR "تجمع" OR "أطباء" OR "قروب")`;
+      
+      coreQuery = `(${enhancedSpecialty} ${level}) (${enContext} OR ${arContext})`;
   }
 
   // 5. LOCATION LOCK
